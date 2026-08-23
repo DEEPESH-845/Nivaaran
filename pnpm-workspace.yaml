@@ -1,3 +1,8 @@
+# allowBuilds is pnpm 11; onlyBuiltDependencies is the pnpm 10 spelling.
+# Vercel picks its pnpm from the lockfile version and runs 10.x, so both stay.
 allowBuilds:
   esbuild: true
   unrs-resolver: true
+onlyBuiltDependencies:
+  - esbuild
+  - unrs-resolver
