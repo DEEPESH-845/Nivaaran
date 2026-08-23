@@ -1,0 +1,68 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { aiConfigured, structured } from "@/lib/ai/client";
+import { allow, clientKey } from "@/lib/ai/limit";
+
+const Body = z.object({
+  text: z.string().min(1).max(1500),
+  lang: z.enum(["en", "hi"]),
+});
+
+const ExplainSchema = z.object({
+  plain: z
+    .string()
+    .describe("The same meaning, rewritten as simply as possible. Two short sentences at most."),
+});
+
+const SYSTEM = `You rewrite explanations about Indian government provident-fund procedures into the simplest possible language, for a reader who may have limited formal education and is anxious about money they are owed.
+
+Hard rules:
+- Preserve the meaning exactly. Never add a fact, a number, a fee, a timeline or a requirement that is not in the input.
+- Never remove a caveat or a limitation.
+- Two short sentences at most. Everyday words. No jargon, no form numbers unless the input has them.
+- Reply in the requested language only.
+- If you cannot simplify without changing the meaning, return the input unchanged.`;
+
+export async function POST(request: Request) {
+  const parsed = Body.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "invalid_request" }, { status: 422 });
+  }
+
+  if (!allow(clientKey(request))) {
+    return NextResponse.json(
+      { plain: parsed.data.text, resolvedBy: "unavailable", reason: "rate_limited" },
+      { status: 429 },
+    );
+  }
+
+  if (!aiConfigured()) {
+    return NextResponse.json({
+      plain: parsed.data.text,
+      resolvedBy: "unavailable",
+      reason: "not_configured",
+    });
+  }
+
+  const result = await structured(
+    ExplainSchema,
+    "plain_explanation",
+    SYSTEM,
+    `Language: ${parsed.data.lang === "hi" ? "Hindi" : "English"}\n\nText:\n${parsed.data.text}`,
+  );
+
+  if (!result.ok) {
+    // Never fail loudly: the original wording is already correct, just denser.
+    return NextResponse.json({
+      plain: parsed.data.text,
+      resolvedBy: "unavailable",
+      reason: result.reason,
+    });
+  }
+
+  return NextResponse.json({
+    plain: result.data.plain,
+    resolvedBy: "model",
+    model: result.model,
+  });
+}
