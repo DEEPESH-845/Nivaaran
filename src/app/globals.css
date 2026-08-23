@@ -4,7 +4,8 @@
    NIVAARAN DESIGN SYSTEM
    Civic instrument, not SaaS dashboard.
    Reference: government print stationery + editorial typography.
-   Light theme only — a deliberate scope cut, see docs/DESIGN.md.
+   Light theme, plus one deliberate 'night' act on the landing narrative.
+   Not dark mode — a single designed section. See docs/DESIGN.md.
    ============================================================ */
 
 @theme {
@@ -81,6 +82,32 @@
   /* ---- Motion ---- */
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ---- Night: the dark narrative act. NOT dark mode — one designed section,
+     the same surface as the notice bar, extended into a full-bleed scene. ---- */
+  --color-night:        oklch(0.215 0.020 258);
+  --color-night-rise:   oklch(0.268 0.022 258);
+  --color-night-line:   oklch(0.350 0.020 258);
+  --color-night-edge:   oklch(0.520 0.020 258);  /* 3.18:1 — interactive boundary */
+  --color-night-ink:    oklch(0.975 0.004 85);   /* 16.30:1 */
+  --color-night-soft:   oklch(0.855 0.010 258);  /* 11.27:1 */
+  --color-night-faint:  oklch(0.712 0.014 258);  /*  6.86:1 */
+  --color-signal:       oklch(0.800 0.100 268);  /*  9.30:1 — accent on night */
+
+  /* Mid-tints for marks and diagram strokes on night */
+  --color-blocked-300: oklch(0.790 0.105 41);    /*  8.75:1 on night */
+  --color-clear-300:   oklch(0.775 0.095 158);   /*  8.95:1 on night */
+
+  /* ---- Motion: one system. Never hand-tune a duration inline. ---- */
+  --ease-entry:     cubic-bezier(0.16, 1, 0.30, 1);
+  --ease-cinematic: cubic-bezier(0.65, 0.02, 0.15, 1);
+
+  --dur-instant:   120ms;
+  --dur-fast:      240ms;
+  --dur-medium:    420ms;
+  --dur-slow:      680ms;
+  --dur-cinematic: 1100ms;
+
 }
 
 /* Fluid display size for hero moments */
@@ -176,3 +203,126 @@
   to   { opacity: 1; transform: none; }
 }
 .animate-rise { animation: rise 0.32s var(--ease-out-soft) both; }
+
+/* ============================================================
+   NARRATIVE LAYER
+   Only the landing story uses these. The journey stays quiet.
+   Every scene has a designed *static* end-state: reduced motion
+   tells the same story in stills, it does not switch it off.
+   ============================================================ */
+
+@layer components {
+
+  /* ---- Full-bleed escape from the max-w-5xl column ---- */
+  .bleed {
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+  }
+
+  /* ---- The night act ---- */
+  .night {
+    background-color: var(--color-night);
+    color: var(--color-night-ink);
+  }
+  .night ::selection {
+    background: var(--color-signal);
+    color: var(--color-night);
+  }
+  .night :focus-visible { outline-color: var(--color-signal); }
+
+  /* ---- Technical metadata voice, used across every scene ---- */
+  .meta {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- Scene reveal. Driven by IntersectionObserver (see Reveal). ----
+     Hidden state applies only when motion is welcome and scripting exists,
+     so a reduced-motion or no-JS reader never sees an empty page. */
+  [data-reveal] {
+    transition:
+      opacity var(--dur-slow) var(--ease-entry),
+      transform var(--dur-slow) var(--ease-entry);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    [data-reveal="pending"] {
+      opacity: 0;
+      transform: translate3d(0, 14px, 0);
+    }
+  }
+  @media (scripting: none) {
+    [data-reveal="pending"] { opacity: 1; transform: none; }
+  }
+
+  /* ---- The mismatch: one token, read by a machine ---- */
+  .tok {
+    position: relative;
+    display: inline-block;
+    border-radius: 4px;
+    padding: 0.125rem 0.4rem;
+    font-family: var(--font-mono);
+    letter-spacing: -0.01em;
+    isolation: isolate;
+  }
+  .tok-fill {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0;
+  }
+  .tok-fill--clear   { background: var(--color-clear-100);   box-shadow: inset 0 0 0 1px var(--color-clear-200); }
+  .tok-fill--blocked { background: var(--color-blocked-100); box-shadow: inset 0 0 0 1px var(--color-blocked-200); }
+
+  /* The read: a scan line crosses the record, tokens resolve behind it. */
+  @media (prefers-reduced-motion: no-preference) {
+    .scan .tok-fill { animation: tok-resolve var(--dur-fast) var(--ease-entry) both; }
+    .scan .tok-fill { animation-delay: calc(700ms + var(--i, 0) * 260ms); }
+    .scan .tok-text { animation: tok-ink var(--dur-fast) var(--ease-entry) both; animation-delay: calc(700ms + var(--i, 0) * 260ms); }
+    .scan-line { animation: scan-sweep 1900ms var(--ease-cinematic) both; animation-delay: 500ms; }
+    .scan-track { container-type: inline-size; }
+    .scan-verdict { animation: rise var(--dur-slow) var(--ease-entry) both; animation-delay: 1750ms; }
+    .scan-stamp   { animation: stamp var(--dur-slow) var(--ease-entry) both; animation-delay: 2350ms; }
+  }
+  /* The reading head. Invisible unless it is actually sweeping. */
+  .scan-line {
+    position: absolute;
+    top: -0.25rem;
+    bottom: -0.25rem;
+    left: 0;
+    width: 2px;
+    border-radius: 2px;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      var(--color-blocked-500) 18%,
+      var(--color-blocked-500) 82%,
+      transparent
+    );
+    will-change: transform;
+    opacity: 0;
+  }
+
+  /* Static end-state: the record is already read. */
+  .tok-fill, .scan-verdict, .scan-stamp { opacity: 1; }
+
+  @keyframes tok-resolve { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes tok-ink     { from { color: var(--color-ink-faint); } to { color: inherit; } }
+  @keyframes scan-sweep {
+    0%   { opacity: 0; transform: translate3d(0, 0, 0); }
+    8%   { opacity: 1; }
+    92%  { opacity: 1; }
+    100% { opacity: 0; transform: translate3d(100cqw, 0, 0); }
+  }
+  @keyframes stamp {
+    from { opacity: 0; transform: translate3d(0, 8px, 0) rotate(-1.5deg); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* ---- Scrubbed scenes read --p (0→1) written by useSceneProgress ---- */
+  .scrub { --p: 0; }
+}

@@ -10,7 +10,7 @@
 2. **A civic instrument, not a dashboard.** No cards floating on gradients, no glass, no neon. Borders over shadows. The page should read like a well-made form, redesigned by someone who cared.
 3. **Verdicts are information, not alarms.** Blockers are terracotta, not browser red. A citizen finding out their claim will fail is receiving *useful news*; the interface should not shout at them for it.
 4. **Every number is auditable.** Sources, dates and confidence are visible in-product, one tap away, never hidden in a footer.
-5. **Motion earns its place.** One 320ms entry rise on the verdict, honoured `prefers-reduced-motion`, nothing else.
+5. **Motion earns its place.** In the journey that means one 320ms entry rise on the verdict and nothing else. The landing page is the single exception — it carries a scroll-driven narrative, because a stranger has to understand a systems problem before they will trust the verdict screen. Every scene there has a designed *static* end-state, so `prefers-reduced-motion` tells the same story in stills rather than switching it off. See §10.
 
 ---
 
@@ -57,7 +57,22 @@ Every value is authored in `oklch` so lightness is perceptually even across hues
 | Caution | `caution-*` | ochre, hue 72–88 | Worth knowing, not wrong |
 | Clear | `clear-*` | verdigris, hue 155–160 | Resolved |
 
-**Light theme only.** A deliberate cut: one theme done properly beats two done adequately in five days. `body` paints an explicit background so it never borrows a host's colours.
+**Light theme, plus one night act.** A deliberate cut: one theme done properly beats two done adequately in five days. `body` paints an explicit background so it never borrows a host's colours.
+
+The landing narrative's fifth beat is full-bleed `night` — the same surface as the persistent notice bar, extended into a scene. This is *not* dark mode; it is one section, and the rest of the product stays light on purpose. Its tokens were measured on the same terms as everything else:
+
+| Pair | Ratio | Requirement |
+|---|---:|---|
+| `night-ink` on `night` | 16.30 | ✅ AA / AAA |
+| `night-soft` on `night` | 11.27 | ✅ AA / AAA |
+| `night-faint` on `night` | 6.86 | ✅ AA / AAA |
+| `signal` on `night` | 9.30 | ✅ AA / AAA |
+| `blocked-300` on `night` | 8.75 | ✅ AA / AAA |
+| `clear-300` on `night` | 8.95 | ✅ AA / AAA |
+| `night-faint` on `night-rise` | 5.94 | ✅ AA |
+| `night-edge` on `night` | 3.18 | ✅ 1.4.11 non-text |
+
+Because a dark section scrolls under the sticky header, that header is opaque rather than frosted — translucency let the night act's text bleed through it.
 
 ### 3.2 Contrast — measured, not assumed
 
@@ -113,6 +128,11 @@ Tailwind's 4px scale throughout. Radii are squared-off and document-like: `ctl 8
 | `RejectionDecoder` | AI surface — paste a rejection, get named causes |
 | `ExplainSimply` | AI surface — plain-language rewrite |
 | `Shell` | Notice bar, header, skip link, footer |
+| `Reveal` | Enter-on-scroll wrapper; one shared observer for the page |
+| `MismatchScan` | The landing's signature scene — the real matcher, scanned |
+| `ScaleField` · `Gate` | Canvas scenes, DPR-capped, scroll-scrubbed |
+| `SilenceTrack` | The twenty-day scrub and the honest ratio bars |
+| `EngineLive` | The real engine re-running in the page, 4 blockers → 2 |
 
 ### 4.1 The finding card, in detail
 
@@ -183,6 +203,32 @@ Rather than ship a third static "simple language" copy set, simplification is ge
 
 ---
 
-## 10. What we deliberately did not build
+## 10. The landing narrative
 
-Dark mode · a component library · a design-token pipeline · animation beyond one entry transition · a chatbot · document upload with vision extraction (the highest-value cut; see ARCHITECTURE.md §7).
+The landing page is the one place in the product that has to persuade rather than assist, so it is built differently — and its rules are written down in `AGENTS.md` so they cannot drift.
+
+**The metaphor is the mismatch.** Nivaaran's atom is two rows of the same name, one token apart. That primitive — two parallel rows and the gap between them — recurs through all eight beats, mutating rather than repeating: a name, then two bars (7.96 crore filed against 1.74 crore rejected), then two tracks (twenty days against ten minutes), then before and after an automated gate, then the same record resolved.
+
+| Beat | Scene | Technique |
+|---|---|---|
+| 01 the record | `MismatchScan` | CSS keyframes; renders the real `compareNames` |
+| 02 the door | persona tiles | the citizen exits here, within one scroll of the top |
+| 03 the scale | `ScaleField` | canvas, 796 marks = 7.96 crore, 174 terracotta |
+| 04 the silence | `SilenceTrack` | scroll-scrubbed day counter and ratio bars |
+| 05 the machine | `Gate` | canvas sieve, full-bleed night |
+| 06 the turn | typography only | the Jan 2025 circular, cited in place |
+| 07 the check | `EngineLive` | runs the real `preflight` and `applyFix`, 4 blockers → 2 |
+| 08 the place | table | where the same check could run |
+| the close | `MismatchScan resolved` | the opening record, corrected |
+
+**Nothing on the page is a mock-up of the product.** The hero calls the real matcher; the live check calls the real engine, client-side, with no network. Both would break if the engine broke.
+
+**No new dependencies.** `IntersectionObserver`, `requestAnimationFrame`, inline SVG and one DPR-capped canvas, in place of GSAP, ScrollTrigger, Lenis and Three.js. Three primitives carry all of it: `Reveal`, `useSceneProgress` and `useCanvas`. Motion durations and easings are `@theme` tokens, never inline values.
+
+**No custom cursor, no scroll hijacking, no WebGL.** Each was considered and rejected on the same grounds: it costs touch or keyboard parity and adds nothing this argument needs.
+
+---
+
+## 11. What we deliberately did not build
+
+Dark mode · a component library · a design-token pipeline · an animation library · a chatbot · document upload with vision extraction (the highest-value cut; see ARCHITECTURE.md §7).

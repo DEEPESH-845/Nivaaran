@@ -67,7 +67,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <NoticeBar />
 
-      <header className="sticky top-0 z-40 border-b border-line bg-paper/85 backdrop-blur-md">
+      {/* Opaque, not frosted: the landing narrative runs a full-bleed dark act
+          underneath this bar, and translucency let its text bleed through. */}
+      <header className="sticky top-0 z-40 border-b border-line bg-paper">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-2.5">
           <Wordmark />
           <div className="flex items-center gap-2">

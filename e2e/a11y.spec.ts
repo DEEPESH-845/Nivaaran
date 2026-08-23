@@ -7,6 +7,19 @@ async function scan(page: Page) {
   // Titles are applied after client-side navigation settles; scanning before
   // that lands reports a false document-title violation.
   await expect(page).toHaveTitle(/Nivaaran/);
+
+  // The landing narrative reveals scenes on scroll. Scanning without walking
+  // the page first would only ever audit the first viewport, so drive it to
+  // the bottom and back: axe then sees the page a reader actually gets.
+  await page.evaluate(async () => {
+    const step = Math.max(320, window.innerHeight * 0.8);
+    for (let y = 0; y < document.body.scrollHeight; y += step) {
+      window.scrollTo({ top: y, behavior: "instant" });
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    window.scrollTo({ top: 0, behavior: "instant" });
+  });
+
   // Entry animations fade content in. Colour contrast measured mid-fade is
   // meaningless, so wait for every animation to settle before scanning.
   await page.waitForFunction(() =>
