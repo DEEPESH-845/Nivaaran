@@ -124,7 +124,9 @@ Tailwind's 4px scale throughout. Radii are squared-off and document-like: `ctl 8
 | `JourneyRail` | The persistent "where am I" indicator |
 | `NameDiff` / `ValueDiff` | Token-level record comparison |
 | `FindingCard` | Severity, owner, evidence, why, fix, source |
+| `LeaverRow` | The employer's view of one former employee. Employer-owned work uses `employerFix.summary`, not the finding title — "your date of exit" is addressed to the member, and HR would read "your" as their own. Member-owned work keeps the citizen voice and is rendered as a quotation, because that is the message to forward |
 | `SourceChip` | Citation, publisher, verified date, confidence, caveat |
+| `DocumentSlot` | AI surface — acquire one document and read it. Owns the whole privacy path: downscale, re-encode, one call, nothing stored. Used twice on `/documents` |
 | `RejectionDecoder` | AI surface — paste a rejection, get named causes |
 | `ExplainSimply` | AI surface — plain-language rewrite |
 | `Shell` | Notice bar, header, skip link, footer |
@@ -143,6 +145,19 @@ The card is the product's atom. Every one answers six questions without being as
 Fix steps are collapsed by default. Opening one reveals numbered steps, queue time, any caveat, the official link, and **“I've done this — re-check”**, which re-runs the engine live.
 
 ---
+
+### 4.2 Paper
+
+One screen is designed to leave the product: the fix plan on `/preflight`.
+Printing drops the header, rail, footer nav and every AI affordance, and
+expands what was collapsed — every fix panel, every citation, with link URLs
+printed after the link text. The disclosure bar survives, inverted to
+ink-on-paper. `<details>` cannot be opened by a media query, so print unhides
+`::details-content` directly.
+
+The page-break rule is deliberate: numbered fix steps and record diffs are kept
+whole, the card around them is allowed to split. Keeping the whole card
+together looked tidier and wasted half a sheet per finding.
 
 ## 5. Responsive behaviour
 

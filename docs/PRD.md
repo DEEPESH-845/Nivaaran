@@ -44,7 +44,7 @@ The remedy is free, legal and live. The only missing piece is that **nobody can 
 
 **Secondary — Sunita, 41, Jaipur.** Filed a claim 24 days ago. Status says *Rejected*. She does not know what to do next and is being quoted ₹2,000 by a local agent to "get it done."
 
-**Tertiary — the employer's HR generalist**, who is the single point of failure for exit dates and does not know a claim is blocked on them.
+**Tertiary — the employer's HR generalist**, who is the single point of failure for exit dates and does not know a claim is blocked on them. **Served by `/employer`**: the same engine, repartitioned by who can act, showing which leavers are waiting on them and what each one costs in minutes.
 
 Non-users in v1: EPFO staff, pensioners filing 10D, international workers.
 
@@ -144,12 +144,12 @@ Eligibility is **never** decided by a model. The rules engine is deterministic a
 
 | # | Surface | Model job | Fallback if AI is down |
 |---|---|---|---|
-| 1 | **Document reader** | Structured extraction from a document image → `{docType, name, dob, accountNo, ifsc, confidence}` | Manual entry fields, pre-filled from fixtures |
-| 2 | **Mismatch explainer** | Explain *why* two name/date variants fail EPFO's matcher, in plain language | Deterministic diff + a static explanation string |
-| 3 | **Rejection decoder** | Map free-text EPFO rejection wording → our rule taxonomy | Keyword map covering the documented top-8 reasons |
-| 4 | **Plain-language / Hindi** | On-demand "What does this mean?" for any rule or term | Pre-translated static strings for every shipped rule |
+| 1 | **Document reader** ✅ built | Structured extraction from a document image → `{docType, name, dob, ifsc, accountLast4, confidence, quality}` — deliberately no field able to hold an Aadhaar, PAN or full account number | The records already on file, unchanged; a plain line saying reading is unavailable |
+| 2 | **Mismatch explainer** ✅ built | Explain *why* two name/date variants fail EPFO's matcher, in plain language | Deterministic diff + a static explanation string |
+| 3 | **Rejection decoder** ✅ built | Map free-text EPFO rejection wording → our rule taxonomy | Keyword map covering the documented top-8 reasons |
+| 4 | **Plain-language / Hindi** ✅ built | On-demand "What does this mean?" for any rule or term | Pre-translated static strings for every shipped rule |
 
-Provider: **OpenAI** (`gpt-5.x`, structured outputs). Server-side only; the key never reaches the client. Timeouts, rate-limit handling and a visible degraded state are required, not optional — see ARCHITECTURE.md.
+All four surfaces are built. Provider: **OpenAI** (`gpt-5.x`, structured outputs; the document reader adds one image input). Server-side only; the key never reaches the client. The document reader is the only surface a citizen's own file reaches — it is downscaled and re-encoded in the browser, held for one call, and stored nowhere. See ARCHITECTURE.md §5.1. Timeouts, rate-limit handling and a visible degraded state are required, not optional — see ARCHITECTURE.md.
 
 > **Design rule:** a judge can switch AI off entirely and the core journey still completes. That is the point.
 

@@ -95,6 +95,10 @@ The verdict is deterministic. A model is only ever asked to *phrase* it.
 
 ## 4. The Preflight API
 
+Documented and runnable at [`/api`](../src/app/api/page.tsx) — request shape,
+response shape, copy-paste `curl`, and a button that POSTs the reader's own
+in-progress session to the live endpoint and prints what comes back.
+
 `GET /api/preflight` returns the contract, the rule ids, the source registry and a worked example.
 `POST /api/preflight` validates against a Zod schema and returns the full result with each finding's citation inlined.
 
@@ -141,6 +145,127 @@ citizen taps "Explain this simply"
 
 A Playwright test aborts every `/api/ai/**` request and asserts the journey still completes and the verdict is unchanged.
 
+### 5.1 The document pre-check — redaction by schema
+
+`POST /api/ai/extract` reads a document image and returns the four fields the
+engine compares. It is the only place a model sees an image, and the only place
+a citizen's own document reaches us at all.
+
+The privacy design is not a prompt, it is the type. `Facts` needs
+`aadhaar: {name, dob}`, `bank: {name, ifsc, accountLast4}` and
+`panOnRecord: boolean` — four fields and a flag. So `ExtractSchema` has exactly
+those four fields plus two enums, and **no field capable of holding an Aadhaar
+number, a PAN, a UAN, a full account number or free text.** The model has
+nowhere to put an identifier even if it reads one. Same principle as the
+decoder's closed list of nine rule ids: refusal by construction.
+
+Five consequences, all in code:
+
+1. **The schema is the redaction.** No identifier-shaped field exists; a
+   payload carrying one fails `safeParse`, and a unit test asserts that.
+2. **No free text in the response.** `quality` and `confidence` are enums, so
+   there is no string field to smuggle a number into.
+3. **`scrub()` runs on the server regardless.** `name` is stripped of digits
+   and capped at 80 characters; `accountLast4` must match `/^\d{4}$/`; `ifsc`
+   must match `/^[A-Z]{4}0[A-Z0-9]{6}$/`; `dob` must be a plausible ISO date.
+   Anything else becomes `null` rather than being shown to a citizen as fact.
+4. **Nothing is stored.** The image is an in-memory `Blob` on the client, never
+   written to `localStorage`. The route holds it for the duration of one call
+   and logs no bytes.
+5. **Downscaled before it is sent** — 1600px longest edge, re-encoded to JPEG
+   q0.8 through a canvas. Cheaper and faster, and the re-encode drops EXIF
+   including any GPS tag. The screen says so.
+
+Extraction **pre-fills, never commits**: every value lands in an editable input
+carrying a confidence chip and the label *"Pre-check only — EPFO performs final
+verification."* Nothing reaches `Facts` until the citizen presses a button, and
+the verdict still comes from `preflight`, unchanged.
+
+```
+citizen picks a sample or a file
+   → downscale + re-encode in the browser (EXIF gone)
+   → POST /api/ai/extract → 5/min per-IP vision budget → key present?
+        no  → "Reading documents isn't available right now", journey untouched
+        yes → OpenAI vision, 15s deadline, structured output
+                ok  → scrub() → four fields, pre-filled and editable
+                not → the same quiet line
+```
+
+---
+
+### 5.1.1 Reconciliation — `/documents`
+
+Extraction alone is not the product; the comparison is. `/documents` reads an
+identity document and a passbook into two independent `DocumentSlot`s and
+renders `reconcile()` over both.
+
+```ts
+reconcile(epfo, identity, bank): ReconcileRow[]   // pure
+```
+
+It calls the same `compareNames` and `compareDates` the rules call. That is not
+tidiness — if this table and `/preflight` could disagree, one of them would be
+lying to a citizen about whether their claim will be paid.
+
+**The constraint that shapes the screen: only some of these comparisons are
+ones EPFO runs.**
+
+| Comparison | Rule |
+|---|---|
+| identity name → EPFO | `R-NAME-AADHAAR` |
+| identity DOB → EPFO | `R-DOB-AADHAAR` |
+| passbook name → EPFO | `R-BANK-NAME` |
+| passbook IFSC → EPFO | none |
+| passbook account → EPFO | none |
+
+`R-IFSC` judges whether a code is *usable*, not whether it matches. Nothing
+compares account numbers. So a row carries a `ruleId` only where a rule exists;
+the other differences render as "worth knowing" with a plain consequence —
+*EPFO pays the account it has on file* — and never count toward the blocker
+headline. Inventing a rejection that will not happen is the same failure as
+missing one.
+
+The engine also never compares the two documents to each other, because EPFO
+does not. A three-way view invites that read, so a document-to-document
+disagreement is reported as information, never as a ✘.
+
+The page's verb is **compare**, never *verify*. We cannot authenticate a
+government document, and a citizen who reads "verified" and files anyway has
+been misled by us.
+
+---
+
+### 5.2 The employer lens
+
+`/employer` is the same engine with a different reader. It runs `preflight`
+over the same `Facts` and re-partitions the findings by who can act:
+
+```
+reviewRoster(leavers)          pure — no I/O, no clock
+  → blockedOnYou    ≥1 blocker with owner "employer" AND an employerFix
+  → blockedOnThem   blocked, but nothing the employer can act on
+  → clear
+```
+
+No second rule set, no employer-specific record type, no login and no data
+intake — the roster is a synthetic fixture and the page says so. `Finding`
+gains one optional field, `employerFix`, on the three rules that can be
+employer-owned: the citizen's steps ("sign in with your UAN") are wrong advice
+for an HR desk, and domain copy stays with the rule rather than migrating into
+a component.
+
+Ownership alone is not enough to put a finding in the employer's queue — it
+also needs an `employerFix`. Naming an owner we have no instructions for is the
+dead end this lens exists to remove.
+
+**One latent bug fixed with it.** `minutesToFix` summed per finding, so a member
+needing both a name and a date-of-birth correction was quoted twice for one
+visit to Modify Basic Details. `Fix.fixKey` marks fixes that are one action;
+`billableMinutes()` counts distinct keys, and both the citizen total and the
+employer total go through it. No persona currently has both mismatches on the
+same side, so nothing on screen changed — which is the point of fixing it in
+the shared function rather than at a call site.
+
 ---
 
 ## 6. Failure handling
@@ -148,8 +273,8 @@ A Playwright test aborts every `/api/ai/**` request and asserts the journey stil
 | Failure | Behaviour |
 |---|---|
 | No `OPENAI_API_KEY` | Deterministic paths only; AI surfaces say so plainly |
-| OpenAI slow | 9s deadline, one retry, then fall back |
-| OpenAI rate-limited / 429 | Fall back; our own 12-req/min per-IP limit sits in front |
+| OpenAI slow | 9s deadline for text, 15s for vision, one retry, then fall back |
+| OpenAI rate-limited / 429 | Fall back; our own per-IP limit sits in front — 12/min for text, 5/min for vision |
 | Model refuses or returns unparsable output | Fall back |
 | Network offline | Landing, questions and the entire verdict still work — the engine needs no network |
 | `localStorage` blocked or full | Every access wrapped; journey completes but is not resumable |
@@ -157,6 +282,8 @@ A Playwright test aborts every `/api/ai/**` request and asserts the journey stil
 | Browser back / refresh | Step lives in the URL; answers live in storage; both tested |
 | Double-tap on Continue | Navigation runs in a transition and the button disables — this was a real bug that skipped questions |
 | Invalid API payload | 422 with per-field Zod issues |
+| Document unreadable, or not a document | Returned as a `quality` value and shown as a plain line; the citizen edits the fields or discards them |
+| Image over 8 MB decoded | 422 before any model call |
 
 ---
 
@@ -164,6 +291,8 @@ A Playwright test aborts every `/api/ai/**` request and asserts the journey stil
 
 - **The API key is server-only.** `client.ts` imports `server-only`; the key is never in a client bundle.
 - **No personal data is collected or stored.** No accounts, no server-side user records, no analytics, no cookies. Session state is `localStorage` on the citizen's own device.
+- **Document images transit to OpenAI and are kept nowhere.** The one place a citizen's own file leaves the browser is `/api/ai/extract`. It is downscaled and re-encoded first — which drops EXIF, GPS included — held for one call, never written to disk or storage, and never logged. The screen says all of this before the file picker, and points at synthetic specimens instead.
+- **No identifier can be extracted.** See §5.1: the extraction schema has no field able to hold one, and a server-side scrub runs anyway.
 - **No real identifiers anywhere in the repository.** Every persona is synthetic; UANs are masked and obviously fake. The UI warns against entering real values.
 - **No live government system is touched.** No scraping, no private APIs, no government infrastructure. Official URLs are plain outbound links opened with `rel="noopener noreferrer"`.
 - **Rate limiting** on both AI routes. In-process `Map` — honest for a single-instance prototype, and named as a limitation in the code.
@@ -176,16 +305,24 @@ A Playwright test aborts every `/api/ai/**` request and asserts the journey stil
 
 | Suite | Count | Covers |
 |---|---:|---|
-| `vitest` | **43** | Name/date matching incl. the canonical rejection cases · every rule · category A/B/C routing · ordering · determinism · bilingual completeness · the rejection decoder · friction maths and its caps |
-| `playwright` (mobile + desktop) | **43** | Intent → verdict → fix → re-check → file → confirm → track · changing an answer changes the verdict · back button · refresh · deep link with no session · AI endpoints failing · decoder without a model · Hindi across domain content · axe on 8 states, zero violations · keyboard-only operation · skip link · 44px touch targets |
+| `vitest` | **110** | Name/date matching incl. the canonical rejection cases · every rule · category A/B/C routing · ordering · determinism · bilingual completeness · the rejection decoder · the extraction scrub and its schema · every source's shape, age and citation map · roster partitioning and de-duplicated effort · document reconciliation and which comparisons carry a rule · friction maths and its caps |
+| `playwright` (mobile + desktop) | **76** | Intent → verdict → fix → re-check → file → confirm → track · changing an answer changes the verdict · back button · refresh · deep link with no session · AI endpoints failing · decoder without a model · Hindi across domain content · document pre-check pre-filling, committing and changing the verdict · the extraction route failing · the employer lens partitioning, acting and re-checking · two-document reconciliation, a photographed file through the real file input, the cold start and the degraded read · axe on 12 states, zero violations · keyboard-only operation incl. the file input · skip link · 44px touch targets |
 
 `npm run typecheck && npm run lint && npm test && npm run build && npm run e2e` is the gate.
+
+**Source freshness is part of that gate.** `src/lib/rules/sources.test.ts` fails
+the build when any `SOURCES[].verifiedOn` is more than 90 days old. The failure
+names the source, the rules that depend on it, the URL to re-check and the
+caveat we already recorded, so re-verifying is a task rather than an
+investigation. The rule→source map it reports is read off the engine — the test
+runs a record that trips all nine rules and asserts all nine fired, so a new
+rule cannot quietly escape the check.
 
 ---
 
 ## 9. Deployment
 
-Static prerender for all nine pages; three function routes. `OPENAI_API_KEY` (and optionally `OPENAI_MODEL`, `OPENAI_TIMEOUT_MS`) as environment variables. No database, no migrations, no secrets beyond the one key. Without the key the site still deploys and the core journey still works.
+Static prerender for all twelve pages; four function routes. `OPENAI_API_KEY` (and optionally `OPENAI_MODEL`, `OPENAI_TIMEOUT_MS`, `OPENAI_VISION_TIMEOUT_MS`) as environment variables. No database, no migrations, no secrets beyond the one key. Without the key the site still deploys and the core journey still works.
 
 ---
 
@@ -194,8 +331,7 @@ Static prerender for all nine pages; three function routes. `OPENAI_API_KEY` (an
 Honest list, roughly in order of difficulty:
 
 1. **An authenticated read of the member record.** Everything here compares a record we were handed. Production needs a consented, authenticated read — which is the single biggest change, and the one that adds the login we currently avoid.
-2. **Document extraction.** Reading name, DOB, account and IFSC from a photographed Aadhaar or passbook, with an explicit *"pre-check only, EPFO performs final verification"* label. Designed, not built — the highest-value cut in this five-day build.
-3. **The live IFSC directory.** Replace the hardcoded demonstration set with the NPCI/RBI source.
-4. **Rule governance.** A named domain owner, a review process and a changelog per rule, with re-verification dates enforced in CI.
-5. **A shared rate limiter and real observability** in place of the in-process `Map`.
-6. **Legal review of every rule** before anyone acts on it. Today the product handles this by showing its sources and its confidence and telling the citizen when we are unsure.
+2. **The live IFSC directory.** Replace the hardcoded demonstration set with the NPCI/RBI source.
+3. **Rule governance.** Re-verification dates are now enforced in CI (§8). What is still missing is the human half: a named domain owner, a review process, and a changelog per rule.
+4. **A shared rate limiter and real observability** in place of the in-process `Map`.
+5. **Legal review of every rule** before anyone acts on it. Today the product handles this by showing its sources and its confidence and telling the citizen when we are unsure.
