@@ -15,6 +15,56 @@ export function jdCategory(f: Facts): JdCategory {
 }
 
 const PORTAL = "https://unifiedportal-mem.epfindia.gov.in/memberinterface/";
+const EMPLOYER_PORTAL = "https://unifiedportal-emp.epfindia.gov.in/epfo/";
+
+/**
+ * Employer steps are written at the level our sources actually support — the
+ * action, never a click path. `epfindia.gov.in` did not resolve from our
+ * network during research (see SOURCES["epfo-jd-2025"]), so every employer fix
+ * carries this caveat rather than pretending to a verified navigation.
+ */
+const EMPLOYER_CAVEAT: Bi = {
+  en: "Menu names differ by establishment and portal version. This describes the action to take, not a verified click path — we could not reach epfindia.gov.in to confirm one.",
+  hi: "मेन्यू के नाम हर प्रतिष्ठान और पोर्टल संस्करण में अलग होते हैं। यहाँ किया जाने वाला काम बताया गया है, कोई सत्यापित क्लिक-पथ नहीं — हम पुष्टि के लिए epfindia.gov.in तक नहीं पहुँच सके।",
+};
+
+/**
+ * One Joint Declaration covers every field it lists, so the name and the date
+ * of birth share this fix and are billed once. Reached only for Category C
+ * members, who cannot self-correct.
+ */
+function employerJdFix(field: Bi) {
+  return {
+    summary: {
+      en: "This member's UAN is not Aadhaar-validated, so they cannot correct their own record. The correction needs a Joint Declaration that you attest and forward.",
+      hi: "इस सदस्य का UAN आधार-सत्यापित नहीं है, इसलिए वे अपना रिकॉर्ड ख़ुद नहीं सुधार सकते। सुधार के लिए जॉइंट डिक्लेरेशन चाहिए, जिसे आप प्रमाणित करके आगे भेजेंगे।",
+    },
+    steps: [
+      {
+        en: `Ask them to raise the Joint Declaration for their ${field.en}, and to link and validate their Aadhaar with their UAN — that alone may move them into the self-service category and end your involvement.`,
+        hi: `उनसे कहें कि वे अपने ${field.hi} के लिए जॉइंट डिक्लेरेशन दें, और अपने UAN से आधार जोड़कर सत्यापित कराएँ — सिर्फ़ इतने से ही वे ख़ुद-सुधार वाली श्रेणी में आ सकते हैं और आपका काम ख़त्म।`,
+      },
+      {
+        en: "Attest the declaration against your own establishment records. The value EPFO will accept is the one on their Aadhaar, not the one in your HR system.",
+        hi: "अपने प्रतिष्ठान के रिकॉर्ड से मिलाकर घोषणा प्रमाणित करें। EPFO वही मान स्वीकार करेगा जो उनके आधार पर है, आपके HR सिस्टम वाला नहीं।",
+      },
+      {
+        en: "Forward it to your EPFO field office and give the member the acknowledgement number, so they can stop guessing whether it moved.",
+        hi: "उसे अपने EPFO फ़ील्ड ऑफ़िस को भेजें और सदस्य को पावती संख्या दें, ताकि उन्हें अंदाज़ा न लगाना पड़े कि काम आगे बढ़ा या नहीं।",
+      },
+    ],
+    minutes: 20,
+    fixKey: "employer-jd",
+    cost: { en: "Free", hi: "निःशुल्क" },
+    waitDays: 20,
+    officialUrl: EMPLOYER_PORTAL,
+    officialLabel: {
+      en: "EPFO Employer Unified Portal",
+      hi: "EPFO नियोक्ता यूनिफ़ाइड पोर्टल",
+    },
+    caveat: EMPLOYER_CAVEAT,
+  };
+}
 
 /**
  * ILLUSTRATIVE ONLY — see SOURCES["ifsc-mergers"].
@@ -66,6 +116,7 @@ function correctionFix(cat: JdCategory, field: Bi) {
         },
       ],
       minutes: 10,
+      fixKey: "member-basic-details",
       cost: { en: "Free", hi: "निःशुल्क" },
       waitDays: cat === "A" ? 0 : 3,
       officialUrl: PORTAL,
@@ -91,6 +142,7 @@ function correctionFix(cat: JdCategory, field: Bi) {
       },
     ],
     minutes: 45,
+    fixKey: "member-jd",
     cost: { en: "Free", hi: "निःशुल्क" },
     waitDays: 20,
     officialUrl: PORTAL,
@@ -139,6 +191,10 @@ const nameVsAadhaar: RuleFn = (f) => {
       verdict,
     },
     fix: correctionFix(cat, { en: "name", hi: "नाम" }),
+    employerFix:
+      cat === "C"
+        ? employerJdFix({ en: "name", hi: "नाम" })
+        : undefined,
     sourceId: "epfo-jd-2025",
   };
 };
@@ -176,6 +232,10 @@ const dobVsAadhaar: RuleFn = (f) => {
       verdict,
     },
     fix: correctionFix(cat, { en: "date of birth", hi: "जन्मतिथि" }),
+    employerFix:
+      cat === "C"
+        ? employerJdFix({ en: "date of birth", hi: "जन्मतिथि" })
+        : undefined,
     sourceId: "epfo-jd-2025",
   };
 };
@@ -421,6 +481,36 @@ const exitDateFiled: RuleFn = (f) => {
             hi: "यह चरण किसी और पर निर्भर है और इसकी कोई तय समय-सीमा नहीं। इसे सबसे पहले शुरू करें।",
           },
         },
+    employerFix: {
+      summary: {
+        en: "Record this member's date of exit against their UAN. It is the most common reason a former employee's claim is rejected, and until an unverified UAN is fixed, only you can file it.",
+        hi: "इस सदस्य की नौकरी छोड़ने की तारीख़ उनके UAN पर दर्ज करें। पूर्व कर्मचारी का दावा ख़ारिज होने का यह सबसे आम कारण है, और असत्यापित UAN पर यह केवल आप ही दर्ज कर सकते हैं।",
+      },
+      steps: [
+        {
+          en: "Open their record by UAN in the employer portal for your establishment.",
+          hi: "अपने प्रतिष्ठान के नियोक्ता पोर्टल में उनके UAN से उनका रिकॉर्ड खोलें।",
+        },
+        {
+          en: "Enter their real last working day and the reason for leaving. A guessed date creates a different rejection later.",
+          hi: "उनका असली अंतिम कार्यदिवस और छोड़ने का कारण भरें। अंदाज़े से भरी तारीख़ आगे चलकर दूसरी ख़ारिजी बनाती है।",
+        },
+        {
+          en: "Approve it with your establishment's digital signature or e-Sign, and tell the member it is filed.",
+          hi: "अपने प्रतिष्ठान के डिजिटल हस्ताक्षर या e-Sign से मंज़ूर करें, और सदस्य को बता दें कि दर्ज हो गया।",
+        },
+      ],
+      minutes: 3,
+      fixKey: "employer-exit-date",
+      cost: { en: "Free", hi: "निःशुल्क" },
+      waitDays: 0,
+      officialUrl: EMPLOYER_PORTAL,
+      officialLabel: {
+        en: "EPFO Employer Unified Portal",
+        hi: "EPFO नियोक्ता यूनिफ़ाइड पोर्टल",
+      },
+      caveat: EMPLOYER_CAVEAT,
+    },
     sourceId: "epfo-jd-deloitte",
   };
 };

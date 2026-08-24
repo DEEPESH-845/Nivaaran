@@ -9,10 +9,14 @@ const HITS = new Map<string, number[]>();
 const WINDOW_MS = 60_000;
 const MAX_PER_WINDOW = 12;
 
-export function allow(key: string): boolean {
+/**
+ * `max` lets an expensive endpoint carry its own, smaller budget under its own
+ * key prefix — vision costs an order of magnitude more than a text call.
+ */
+export function allow(key: string, max = MAX_PER_WINDOW): boolean {
   const now = Date.now();
   const recent = (HITS.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
-  if (recent.length >= MAX_PER_WINDOW) {
+  if (recent.length >= max) {
     HITS.set(key, recent);
     return false;
   }

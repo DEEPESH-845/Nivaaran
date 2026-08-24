@@ -42,6 +42,13 @@ export interface Fix {
   steps: Bi[];
   /** Realistic active effort, not queue time. */
   minutes: number;
+  /**
+   * Fixes sharing a key are one action, and are billed once.
+   * Correcting a name and a date of birth is one visit to Modify Basic
+   * Details, and one Joint Declaration covers both fields — summing them
+   * would quote a member twice for a single trip.
+   */
+  fixKey?: string;
   cost: Bi;
   /** Queue/processing time the citizen must wait after acting. */
   waitDays?: number;
@@ -59,6 +66,12 @@ export interface Finding {
   why: Bi;
   evidence?: Evidence;
   fix: Fix;
+  /**
+   * The same problem, addressed to the other party. Present only on rules an
+   * employer can actually act on — the citizen's steps ("sign in with your
+   * UAN") are wrong advice for an HR desk. See src/app/employer.
+   */
+  employerFix?: Fix;
   sourceId: string;
 }
 

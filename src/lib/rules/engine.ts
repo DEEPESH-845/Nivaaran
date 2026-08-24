@@ -1,5 +1,5 @@
 import { AUTOSETTLE_CEILING, ENGINE_VERSION, RULES, jdCategory } from "./rules";
-import type { Facts, Finding, Owner, PreflightResult, Verdict } from "./types";
+import type { Facts, Finding, Fix, Owner, PreflightResult, Verdict } from "./types";
 
 export { ENGINE_VERSION, jdCategory, AUTOSETTLE_CEILING };
 
@@ -71,9 +71,9 @@ export function preflight(facts: Facts, now = new Date()): PreflightResult {
     });
   }
 
-  const minutesToFix = blockers
-    .filter((f) => f.owner === "citizen")
-    .reduce((sum, f) => sum + f.fix.minutes, 0);
+  const minutesToFix = billableMinutes(
+    blockers.filter((f) => f.owner === "citizen").map((f) => f.fix),
+  );
 
   return {
     verdict,
@@ -88,6 +88,25 @@ export function preflight(facts: Facts, now = new Date()): PreflightResult {
     engineVersion: ENGINE_VERSION,
     evaluatedAt: now.toISOString(),
   };
+}
+
+/**
+ * Active effort across a set of fixes, counting each distinct action once.
+ *
+ * Two findings can be one trip: correcting a name and a date of birth is a
+ * single visit to Modify Basic Details, and a single Joint Declaration covers
+ * both fields. Summing per finding quotes the same ten minutes twice.
+ */
+export function billableMinutes(fixes: Fix[]): number {
+  const seen = new Set<string>();
+  let total = 0;
+  for (const [i, fix] of fixes.entries()) {
+    const key = fix.fixKey ?? `#${i}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    total += fix.minutes;
+  }
+  return total;
 }
 
 /** Longest queue time across all fixes — the honest "when can I file" answer. */
