@@ -2,7 +2,8 @@
 
 import { Suspense, useEffect, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, FileText, Landmark } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileText, Landmark, ScanLine } from "lucide-react";
+import Link from "next/link";
 import { Button, Card, Choice, Disclosure, SectionLabel } from "@/components/ui";
 import { JourneyRail } from "@/components/journey-rail";
 import { QUESTIONS } from "@/lib/questions";
@@ -74,10 +75,43 @@ function RecordsStep() {
         ))}
       </div>
 
+      {/* A door, not the machinery. The reader used to live here inside a
+          <details>, where almost nobody opened it — the capability was never
+          the problem, the burial was. */}
+      <Card className="p-4 sm:p-5">
+        <Link
+          href="/documents"
+          className="group flex min-h-11 items-start gap-3 rounded-ctl text-left"
+        >
+          <ScanLine
+            aria-hidden
+            className="mt-0.5 size-4 shrink-0 text-ink-faint transition-colors group-hover:text-indigo-600"
+            strokeWidth={1.7}
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block text-md font-medium text-ink">
+              {lang === "hi"
+                ? "इन्हें अपने दस्तावेज़ों से पढ़वाएँ"
+                : "Read these from your documents instead"}
+            </span>
+            <span className="mt-1 block text-sm leading-relaxed text-ink-soft">
+              {lang === "hi"
+                ? "पहचान दस्तावेज़ और पासबुक की तस्वीर से चारों जानकारियाँ पढ़ी जाती हैं, और हर एक का EPFO रिकॉर्ड से मिलान दिखता है।"
+                : "Photograph an identity document and a passbook; we read the four fields EPFO checks and compare each one against the record above."}
+            </span>
+          </span>
+          <ArrowRight
+            aria-hidden
+            className="mt-0.5 size-4 shrink-0 text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-indigo-600"
+            strokeWidth={1.8}
+          />
+        </Link>
+      </Card>
+
       <p className="rounded-card border border-caution-100 bg-caution-50 p-3.5 text-xs leading-relaxed text-caution-700">
         {lang === "hi"
-          ? "प्रदर्शन डेटा। ये मान एक काल्पनिक सदस्य फ़ाइल से आते हैं। असली उत्पाद में इन्हें आपके अपलोड किए दस्तावेज़ों से पढ़ा जाता और EPFO रिकॉर्ड से मिलाया जाता।"
-          : "Demonstration data. These values come from a synthetic member file. In a real product they would be read from documents you upload and compared against your live EPFO record."}
+          ? "प्रदर्शन डेटा। ये मान एक काल्पनिक सदस्य फ़ाइल से आते हैं। आप इन्हें ऊपर दिए दस्तावेज़ पृष्ठ से बदल सकते हैं; असली उत्पाद में इनकी तुलना आपके सजीव EPFO रिकॉर्ड से होती।"
+          : "Demonstration data. These values come from a synthetic member file. You can replace them from the documents page above; in a real product they would be compared against your live EPFO record."}
       </p>
     </div>
   );

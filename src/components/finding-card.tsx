@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { useState } from "react";
 import {
   AlertTriangle,
+  ArrowRight,
   Building2,
   CheckCircle2,
   Clock,
@@ -13,6 +14,7 @@ import {
   OctagonAlert,
   User,
 } from "lucide-react";
+import Link from "next/link";
 import { Badge, Button, Card, Disclosure, type Tone } from "@/components/ui";
 import { NameDiff, ValueDiff } from "@/components/name-diff";
 import { ExplainSimply } from "@/components/explain-simply";
@@ -170,7 +172,9 @@ export function FindingCard({
 
         <div className="space-y-2.5">
           <p className="text-sm leading-relaxed text-ink-soft">{t(finding.why)}</p>
-          <ExplainSimply text={t(finding.why)} />
+          <div className="print:hidden">
+            <ExplainSimply text={t(finding.why)} />
+          </div>
         </div>
 
         {finding.fix.steps.length > 0 || finding.fix.officialUrl ? (
@@ -189,8 +193,15 @@ export function FindingCard({
               </span>
             </button>
 
-            {showFix ? (
-              <div className="space-y-3 border-t border-line px-4 py-4">
+            {/* Always in the DOM, hidden with `display:none` so it stays out of
+                the a11y tree — and unhidden for print, because the fix plan is
+                the thing a citizen carries to their employer's HR desk. */}
+            <div
+              className={clsx(
+                "space-y-3 border-t border-line px-4 py-4",
+                !showFix && "hidden print:block",
+              )}
+            >
                 <p className="text-sm font-medium leading-relaxed text-ink">
                   {t(finding.fix.summary)}
                 </p>
@@ -237,8 +248,20 @@ export function FindingCard({
                   </a>
                 ) : null}
 
+                {finding.owner === "employer" ? (
+                  <Link
+                    href="/employer"
+                    className="flex min-h-11 items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 print:hidden"
+                  >
+                    {lang === "hi"
+                      ? "अपने नियोक्ता को यह दिखाएँ — उन्हें क्या करना है"
+                      : "Show your employer what they have to do"}
+                    <ArrowRight aria-hidden className="size-3.5" strokeWidth={1.8} />
+                  </Link>
+                ) : null}
+
                 {onFixed && !fixed ? (
-                  <div className="border-t border-line pt-3">
+                  <div className="border-t border-line pt-3 print:hidden">
                     <Button tone="secondary" onClick={onFixed} full>
                       {lang === "hi"
                         ? "मैंने यह कर लिया — दोबारा जाँचें"
@@ -251,8 +274,7 @@ export function FindingCard({
                     </p>
                   </div>
                 ) : null}
-              </div>
-            ) : null}
+            </div>
           </div>
         ) : null}
 
