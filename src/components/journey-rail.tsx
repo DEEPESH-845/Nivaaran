@@ -28,7 +28,7 @@ export function JourneyRail({ current }: { current: StageId }) {
   return (
     <nav
       aria-label={lang === "hi" ? "आपकी प्रगति" : "Your progress"}
-      className="border-b border-line bg-paper-sunk"
+      className="border-b border-line bg-paper-sunk print:hidden"
     >
       <div className="mx-auto max-w-3xl px-4 py-3">
         <p className="mb-2 text-2xs font-semibold uppercase tracking-[0.09em] text-ink-mute">

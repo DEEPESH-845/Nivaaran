@@ -4,12 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLang } from "@/lib/i18n/context";
 
-/** Persistent, unmissable disclosure. Required by the brief and by decency. */
+/**
+ * Persistent, unmissable disclosure. Required by the brief and by decency.
+ * It survives printing too — inverted to ink-on-paper, because a dark bar
+ * either wastes toner or vanishes entirely depending on the browser.
+ */
 function NoticeBar() {
   const { ui } = useLang();
   return (
-    <div className="bg-ink text-paper">
-      <p className="mx-auto max-w-5xl px-4 py-1.5 text-2xs leading-snug tracking-[0.01em] text-paper/85 sm:text-xs">
+    <div className="bg-ink text-paper print:border-b print:border-line print:bg-transparent print:text-ink">
+      <p className="mx-auto max-w-5xl px-4 py-1.5 text-2xs leading-snug tracking-[0.01em] text-paper/85 print:px-0 print:text-ink-soft sm:text-xs">
         {ui("notOfficial")}
       </p>
     </div>
@@ -69,7 +73,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       {/* Opaque, not frosted: the landing narrative runs a full-bleed dark act
           underneath this bar, and translucency let its text bleed through. */}
-      <header className="sticky top-0 z-40 border-b border-line bg-paper">
+      <header className="sticky top-0 z-40 border-b border-line bg-paper print:hidden">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-2.5">
           <Wordmark />
           <div className="flex items-center gap-2">
@@ -90,9 +94,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <footer className="mt-16 border-t border-line bg-paper-sunk">
-        <div className="mx-auto max-w-5xl space-y-4 px-4 py-8">
-          <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+      <footer className="mt-16 border-t border-line bg-paper-sunk print:mt-6 print:bg-transparent">
+        <div className="mx-auto max-w-5xl space-y-4 px-4 py-8 print:px-0 print:py-4">
+          <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm print:hidden">
             <Link href="/why" className="font-medium text-indigo-600 hover:text-indigo-700">
               {lang === "hi" ? "यह बेहतर क्यों है" : "Why this is better"}
             </Link>
@@ -101,6 +105,15 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </Link>
             <Link href="/status" className="font-medium text-indigo-600 hover:text-indigo-700">
               {lang === "hi" ? "दावे की स्थिति" : "Claim status"}
+            </Link>
+            <Link href="/documents" className="font-medium text-indigo-600 hover:text-indigo-700">
+              {lang === "hi" ? "दस्तावेज़ मिलान" : "Compare documents"}
+            </Link>
+            <Link href="/employer" className="font-medium text-indigo-600 hover:text-indigo-700">
+              {lang === "hi" ? "नियोक्ताओं के लिए" : "For employers"}
+            </Link>
+            <Link href="/api" className="font-medium text-indigo-600 hover:text-indigo-700">
+              {lang === "hi" ? "प्री-फ़्लाइट API" : "Preflight API"}
             </Link>
           </nav>
           <p className="max-w-2xl text-xs leading-relaxed text-ink-mute">

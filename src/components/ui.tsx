@@ -235,7 +235,7 @@ export function Disclosure({
     <details className={clsx("group", className)}>
       <summary
         className={clsx(
-          "flex cursor-pointer list-none items-center gap-1.5 rounded-ctl py-2",
+          "flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-ctl py-2",
           "text-sm font-medium text-indigo-600 hover:text-indigo-700",
           "[&::-webkit-details-marker]:hidden",
         )}
