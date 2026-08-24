@@ -41,7 +41,35 @@ async function intoJourney(page: Page) {
   );
 }
 
-for (const path of ["/", "/why", "/sources", "/status"]) {
+/** The documents page, with one document read and the comparison rendered. */
+async function intoOpenReader(page: Page) {
+  await page.route("**/api/ai/extract", (route) =>
+    route.fulfill({
+      json: {
+        ok: true,
+        docType: "passbook",
+        fields: {
+          name: "Rajesh Kumar Sharma",
+          dob: null,
+          ifsc: "CORP0001234",
+          accountLast4: "8842",
+        },
+        confidence: "medium",
+        quality: "glare",
+      },
+    }),
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: /left my job/i }).click();
+  for (let i = 0; i < 5; i++) {
+    await page.getByRole("button", { name: /^Continue$/ }).click();
+  }
+  await page.getByRole("link", { name: /Read these from your documents instead/i }).click();
+  await page.getByRole("button", { name: /Bank passbook — Rajesh/i }).click();
+  await expect(page.getByRole("button", { name: /Use these values/i })).toBeVisible();
+}
+
+for (const path of ["/", "/why", "/sources", "/status", "/api", "/employer", "/documents"]) {
   test(`no WCAG A/AA violations on ${path}`, async ({ page }) => {
     await page.goto(path);
     const { violations } = await scan(page);
@@ -77,6 +105,39 @@ test("no WCAG A/AA violations in Hindi", async ({ page }) => {
   await page.getByRole("button", { name: /Switch to Hindi/i }).click();
   const { violations } = await scan(page);
   expect(violations.map((v) => `${v.id}: ${v.nodes.length} node(s)`)).toEqual([]);
+});
+
+test("no WCAG A/AA violations on the documents comparison", async ({ page }) => {
+  await intoOpenReader(page);
+  const { violations } = await scan(page);
+  expect(violations.map((v) => `${v.id}: ${v.nodes.length} node(s)`)).toEqual([]);
+});
+
+test("the document pre-check is operable by keyboard, file input included", async ({ page }) => {
+  await intoOpenReader(page);
+  // A visually hidden <input type="file"> still has to be reachable by Tab;
+  // its visible label is the target, not a replacement for it.
+  const file = page.locator("#document-file-identity");
+  await file.focus();
+  await expect(file).toBeFocused();
+  await expect(page.getByText(/Choose a file/i)).toBeVisible();
+});
+
+test("every document pre-check control meets the 44px minimum on mobile", async ({ page }) => {
+  test.skip(test.info().project.name !== "mobile", "mobile viewport only");
+  await intoOpenReader(page);
+  const controls = await page
+    .locator("main")
+    .locator("button:visible, a:visible, summary:visible, label:visible")
+    .all();
+  const undersized: string[] = [];
+  for (const c of controls) {
+    const box = await c.boundingBox();
+    if (box && box.height < 44 && box.width < 44) {
+      undersized.push(`${(await c.textContent())?.trim().slice(0, 40)} — ${box.width}×${box.height}`);
+    }
+  }
+  expect(undersized).toEqual([]);
 });
 
 test("the whole intent step is reachable and operable by keyboard alone", async ({ page }) => {

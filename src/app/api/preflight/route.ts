@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { personaById } from "@/content/personas";
 import { preflight } from "@/lib/rules/engine";
 import { RULES } from "@/lib/rules/rules";
 import { SOURCES } from "@/lib/rules/sources";
@@ -16,6 +17,13 @@ import type { Facts } from "@/lib/rules/types";
  * Deliberately unauthenticated and side-effect free: it stores nothing, logs
  * no payload, and needs no personal identifiers — only the shape of a record.
  */
+
+/**
+ * The record the /api page documents and the demo runs on. Read from the
+ * persona rather than restated here, so the docs cannot drift from the
+ * contract. Synthetic throughout.
+ */
+const EXAMPLE_RECORD = personaById("rajesh")!.facts;
 
 const TriState = z.enum(["yes", "no", "unsure"]);
 
@@ -71,22 +79,9 @@ export async function GET() {
     })),
     disclaimer:
       "Independent hackathon prototype. Not affiliated with EPFO or the Government of India. Rules are best-effort readings of public sources and must be re-verified before any production use. Send synthetic data only.",
-    example: {
-      intent: "final_settlement",
-      daysSinceExit: 68,
-      exitDateFiled: "no",
-      uanAadhaarVerified: "yes",
-      uanBeforeOct2017: "yes",
-      multipleUans: "no",
-      serviceYears: 3,
-      claimAmount: 142000,
-      panOnRecord: true,
-      records: {
-        epfo: { name: "RAJESH K SHARMA", dob: "1996-03-08", ifsc: "CORP0001234", accountLast4: "8842" },
-        aadhaar: { name: "Rajesh Kumar Sharma", dob: "1996-03-08" },
-        bank: { name: "Rajesh Kumar Sharma", ifsc: "CORP0001234", accountLast4: "8842" },
-      },
-    },
+    // The same synthetic record the /api page documents and the demo runs on.
+    // One literal, so the docs cannot drift from the contract.
+    example: EXAMPLE_RECORD,
   });
 }
 

@@ -8,6 +8,13 @@ async function answerQuestions(page: Page) {
   await expect(page.getByRole("heading", { name: /Now we compare your records/i })).toBeVisible();
 }
 
+/** Walk from the records step through to the documents page. */
+async function intoDocuments(page: Page) {
+  await page.getByRole("link", { name: /Read these from your documents instead/i }).click();
+  await expect(page).toHaveURL(/\/documents/);
+  await expect(page.getByRole("button", { name: /Identity record — Rajesh/i })).toBeVisible();
+}
+
 async function startAs(page: Page, saying: RegExp) {
   await page.goto("/");
   await page.getByRole("button", { name: saying }).click();
@@ -148,6 +155,201 @@ test.describe("recovery and resilience", () => {
     await page.getByRole("button", { name: /Tell me what this means/i }).click();
     await expect(page.getByText(/Matched against documented EPFO phrasings/i)).toBeVisible();
     await expect(page.getByText(/Name mismatch between EPFO and Aadhaar/i)).toBeVisible();
+  });
+});
+
+test.describe("the document pre-check", () => {
+  /** One clean reading of each specimen. The model is never called. */
+  const IDENTITY = {
+    ok: true,
+    docType: "identity",
+    fields: { name: "Rajesh K Sharma", dob: "1996-03-08", ifsc: null, accountLast4: null },
+    confidence: "high",
+    quality: "clear",
+  };
+  const PASSBOOK = {
+    ok: true,
+    docType: "passbook",
+    fields: { name: "Rajesh Kumar Sharma", dob: null, ifsc: "CORP0001234", accountLast4: "8842" },
+    confidence: "medium",
+    quality: "glare",
+  };
+
+  const stub = (page: Page, byKind: Record<string, unknown>) =>
+    page.route("**/api/ai/extract", (route) => {
+      // Both slots hit the same endpoint; hand back whichever has not been used.
+      const next = Object.keys(byKind)[0];
+      const json = byKind[next];
+      delete byKind[next];
+      return route.fulfill({ json });
+    });
+
+  test("reads two documents and reconciles every field against the record", async ({ page }) => {
+    await stub(page, { identity: IDENTITY, bank: PASSBOOK });
+    await startAs(page, /left my job/i);
+    await answerQuestions(page);
+    await intoDocuments(page);
+
+    await page.getByRole("button", { name: /Identity record — Rajesh/i }).click();
+    await expect(page.getByLabel(/^Identity document$/).first()).toHaveValue("Rajesh K Sharma");
+
+    await page.getByRole("button", { name: /Bank passbook — Rajesh/i }).click();
+    await expect(page.getByLabel(/^Bank passbook$/).first()).toHaveValue("Rajesh Kumar Sharma");
+
+    // The identity name matches EPFO after normalisation; the passbook name
+    // does not — and only the covered comparisons count as blockers.
+    await expect(page.getByText(/1 of these will stop your claim/i)).toBeVisible();
+
+    // The two documents disagree with each other, which EPFO never checks.
+    await expect(page.getByText(/Your two documents disagree with each other/i)).toBeVisible();
+    await expect(page.getByText(/Pre-check only/i)).toBeVisible();
+  });
+
+  test("an IFSC difference is reported as worth knowing, never as a blocker", async ({ page }) => {
+    await stub(page, {
+      bank: {
+        ok: true,
+        docType: "passbook",
+        fields: { name: "RAJESH K SHARMA", dob: null, ifsc: "HDFC0000521", accountLast4: "8842" },
+        confidence: "high",
+        quality: "clear",
+      },
+    });
+    await startAs(page, /left my job/i);
+    await answerQuestions(page);
+    await intoDocuments(page);
+    await page.getByRole("button", { name: /Bank passbook — Rajesh/i }).click();
+
+    await expect(page.getByText(/Nothing we read will stop your claim/i)).toBeVisible();
+    await expect(page.getByText(/it sends the money somewhere else/i)).toBeVisible();
+  });
+
+  test("using the values changes the verdict", async ({ page }) => {
+    await stub(page, { identity: IDENTITY });
+    await startAs(page, /left my job/i);
+    await answerQuestions(page);
+    await intoDocuments(page);
+    await page.getByRole("button", { name: /Identity record — Rajesh/i }).click();
+    await page.getByRole("button", { name: /Use these values/i }).click();
+    await page.getByRole("link", { name: /See what this changes/i }).click();
+
+    await expect(page).toHaveURL(/\/preflight/);
+    const heading = page.getByRole("heading", { level: 1 });
+    await expect(heading).toContainText("3 things");
+    await expect(
+      page.getByRole("heading", { name: /name in EPFO does not match your Aadhaar/i }),
+    ).toHaveCount(0);
+  });
+
+  test("a document that cannot be read is a quiet line, not a dead end", async ({ page }) => {
+    await page.route("**/api/ai/extract", (route) => route.abort());
+    await startAs(page, /left my job/i);
+    await answerQuestions(page);
+    await intoDocuments(page);
+    await page.getByRole("button", { name: /Identity record — Rajesh/i }).click();
+
+    await expect(page.getByText(/isn't available right now/i).last()).toBeVisible();
+    await page.getByRole("button", { name: /Back to the check/i }).click();
+    await page.getByRole("button", { name: /Check my claim/i }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(/will stop this claim/i);
+  });
+
+  test("landing on /documents with no session asks whose record to compare", async ({ page }) => {
+    await page.goto("/documents");
+    await expect(
+      page.getByRole("heading", { name: /Whose record are we comparing against/i }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: /left my job/i }).click();
+    await expect(page.getByRole("heading", { name: /Read your documents/i })).toBeVisible();
+  });
+
+  test("a photographed file is downscaled, re-encoded and read", async ({ page }) => {
+    // The sample buttons load an SVG; a real user hands us camera bytes. This
+    // is the only test that exercises <input type="file"> end to end, and the
+    // only one that proves the image is re-encoded before it is sent.
+    let sent = "";
+    await page.route("**/api/ai/extract", (route) => {
+      sent = JSON.parse(route.request().postData() || "{}").image ?? "";
+      return route.fulfill({ json: IDENTITY });
+    });
+
+    await startAs(page, /left my job/i);
+    await answerQuestions(page);
+    await intoDocuments(page);
+    await page
+      .locator("#document-file-identity")
+      .setInputFiles("e2e/fixtures/photographed-identity.jpg");
+
+    await expect(page.getByLabel(/^Identity document$/).first()).toHaveValue("Rajesh K Sharma");
+    // Re-encoded through the canvas, which is also what strips EXIF and GPS.
+    expect(sent.startsWith("data:image/jpeg;base64,")).toBe(true);
+    expect(sent.length).toBeGreaterThan(1000);
+  });
+
+  test("the warning against uploading a real document is unmissable", async ({ page }) => {
+    await startAs(page, /left my job/i);
+    await answerQuestions(page);
+    await intoDocuments(page);
+    await expect(page.getByText(/Do not upload a real Aadhaar, PAN or passbook/i)).toBeVisible();
+    await expect(page.getByText(/the image is not saved anywhere/i)).toBeVisible();
+    // And the page never claims to verify anything.
+    await expect(page.getByText(/This is not verification/i)).toBeVisible();
+  });
+});
+
+test.describe("the employer lens", () => {
+  test("shows who is blocked, and who is blocked on the employer", async ({ page }) => {
+    await page.goto("/employer");
+
+    // The headline is arithmetic on the engine, not a written-down number.
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(
+      /6 of your 9 leavers will have a claim rejected\. 3 of them are waiting on you\./i,
+    );
+    await expect(page.getByText(/46 minutes, in total/i)).toBeVisible();
+
+    // Longest wait first: Imran has been waiting 154 days.
+    const yours = page.locator("section", { has: page.getByRole("heading", { name: /Only you can fix these/i }) });
+    await expect(yours.locator("li h3").first()).toHaveText("Imran Qureshi");
+
+    // The other group is the one nobody has told.
+    await expect(
+      page.getByRole("heading", { name: /They can fix these — nobody has told them/i }),
+    ).toBeVisible();
+    await expect(page.getByText(/A synthetic roster/i)).toBeVisible();
+  });
+
+  test("filing an exit date re-runs the check and empties that queue", async ({ page }) => {
+    await page.goto("/employer");
+    const heading = page.getByRole("heading", { level: 1 });
+    await expect(heading).toContainText("3 of them are waiting on you");
+
+    const imran = page.locator("li").filter({ has: page.getByRole("heading", { name: "Imran Qureshi" }) });
+    await imran.getByText("What to do").click();
+    await imran.getByRole("button", { name: /I've filed this — re-check/i }).click();
+
+    // He drops out of the employer's queue; the two who need a Joint
+    // Declaration do not, because the employer has not attested one.
+    await expect(heading).toContainText("2 of them are waiting on you");
+    await expect(
+      page
+        .locator("section", { has: page.getByRole("heading", { name: /Only you can fix these/i }) })
+        .getByRole("heading", { name: "Imran Qureshi" }),
+    ).toHaveCount(0);
+  });
+
+  test("a citizen blocked on their employer can hand them the page", async ({ page }) => {
+    await startAs(page, /rejected/i);
+    await answerQuestions(page);
+    await page.getByRole("button", { name: /Check my claim/i }).click();
+
+    const card = page
+      .locator("li")
+      .filter({ has: page.getByRole("heading", { name: /date of exit has not been recorded/i }) });
+    await card.getByRole("button", { name: /How to fix it/i }).click();
+    await card.getByRole("link", { name: /Show your employer what they have to do/i }).click();
+
+    await expect(page).toHaveURL(/\/employer/);
+    await expect(page.getByRole("heading", { name: "Sunita Devi" })).toBeVisible();
   });
 });
 
