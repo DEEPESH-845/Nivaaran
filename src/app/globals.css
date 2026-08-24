@@ -326,3 +326,79 @@
   /* ---- Scrubbed scenes read --p (0→1) written by useSceneProgress ---- */
   .scrub { --p: 0; }
 }
+
+/* ============================================================
+   PRINT
+   One screen in this product is meant to leave it on paper: the
+   fix plan on /preflight, carried to an employer's HR desk or an
+   EPFO counter. Everything that is navigation on screen is noise
+   on paper — but the disclosure, the sources and the fix steps
+   all have to survive.
+   ============================================================ */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  /* Cards read as ruled boxes; shadows and tints cost toner and clarity. */
+  .rounded-card,
+  .rounded-ctl {
+    box-shadow: none !important;
+  }
+
+  /* Keeping a whole finding together costs half a sheet each time one does
+     not fit, so protect the parts that are useless when split — the numbered
+     fix steps and the record diff — and let the card itself flow. */
+  ol,
+  dl {
+    break-inside: avoid;
+  }
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+
+  /* <details> cannot be opened by a media query, so unhide its contents
+     directly. Both properties are needed: browsers differ on which one
+     collapses a closed disclosure. A citation nobody can read is not a
+     citation, so this is what puts the publisher, the date we checked it and
+     the caveat onto the paper. */
+  details::details-content {
+    content-visibility: visible !important;
+    block-size: auto !important;
+  }
+  /* Older engines collapse the children rather than the pseudo-element. */
+  details > *:not(summary) {
+    display: block !important;
+    content-visibility: visible !important;
+  }
+  details > summary {
+    min-height: 0;
+    font-weight: 600;
+  }
+  details > summary > svg {
+    display: none;
+  }
+
+  /* A printed link is dead unless it carries its address. */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.75em;
+    word-break: break-all;
+  }
+
+  /* Entry animations must not park content at opacity 0 on paper. */
+  .animate-rise,
+  .reveal {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

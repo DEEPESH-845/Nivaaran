@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="620" viewBox="0 0 1000 620" role="img" aria-label="Specimen identity record for Rajesh Kumar Sharma">
+  <!--
+    Synthetic specimen. Deliberately NOT shaped like an Aadhaar card: no
+    emblem, no UIDAI mark, no government layout, no identifier of any kind.
+    Colours mirror the @theme tokens in src/app/globals.css.
+  -->
+  <rect width="1000" height="620" fill="#e8e6df"/>
+  <rect x="40" y="40" width="920" height="540" rx="18" fill="#fcfbf8" stroke="#e3e3e8" stroke-width="2"/>
+
+  <rect x="40" y="40" width="920" height="76" rx="18" fill="#f2f0ea"/>
+  <rect x="40" y="98" width="920" height="18" fill="#f2f0ea"/>
+  <text x="76" y="88" font-family="Georgia, serif" font-size="27" letter-spacing="1.5" fill="#22252f">Identity record</text>
+  <text x="924" y="88" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" letter-spacing="2.6" fill="#6b7180">SPECIMEN</text>
+  <line x1="40" y1="116" x2="960" y2="116" stroke="#e3e3e8" stroke-width="2"/>
+
+  <rect x="76" y="164" width="168" height="200" rx="8" fill="#eceae4" stroke="#e3e3e8" stroke-width="2"/>
+  <circle cx="160" cy="238" r="38" fill="#d8d5cd"/>
+  <path d="M100 352c0-38 27-66 60-66s60 28 60 66z" fill="#d8d5cd"/>
+
+  <text x="292" y="182" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" letter-spacing="2.2" fill="#6b7180">NAME</text>
+  <text x="292" y="222" font-family="ui-sans-serif, system-ui, sans-serif" font-size="38" fill="#22252f">Rajesh Kumar Sharma</text>
+
+  <text x="292" y="288" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" letter-spacing="2.2" fill="#6b7180">DATE OF BIRTH</text>
+  <text x="292" y="328" font-family="ui-monospace, Menlo, monospace" font-size="34" fill="#22252f">08 / 03 / 1996</text>
+
+  <text x="292" y="392" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" letter-spacing="2.2" fill="#6b7180">ISSUED AT</text>
+  <text x="292" y="424" font-family="ui-sans-serif, system-ui, sans-serif" font-size="24" fill="#22252f">Pune, Maharashtra</text>
+
+  <line x1="76" y1="470" x2="924" y2="470" stroke="#e3e3e8" stroke-width="2"/>
+  <text x="76" y="508" font-family="ui-sans-serif, system-ui, sans-serif" font-size="17" fill="#b4532b">SPECIMEN · SYNTHETIC · NOT A GOVERNMENT DOCUMENT</text>
+  <text x="76" y="540" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#6b7180">Created for the Nivaaran prototype. Carries no number of any kind.</text>
+
+  <g opacity="0.09" transform="rotate(-22 500 310)">
+    <text x="500" y="330" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="72" font-weight="700" letter-spacing="6" fill="#22252f">SPECIMEN</text>
+  </g>
+</svg>
