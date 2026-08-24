@@ -23,7 +23,7 @@ const REAL = [
   { en: "The rule engine — deterministic, versioned, unit-tested, runs with no network", hi: "नियम-इंजन — निश्चित, संस्करणबद्ध, परीक्षित, बिना नेटवर्क चलता है" },
   { en: "Name and date reconciliation, including the token-level difference you are shown", hi: "नाम और तारीख़ का मिलान, उस शब्द-स्तरीय अंतर सहित जो आपको दिखाया जाता है" },
   { en: "The IFSC format check", hi: "IFSC प्रारूप की जाँच" },
-  { en: "The public Preflight API at /api/preflight", hi: "/api/preflight पर सार्वजनिक प्री-फ़्लाइट API" },
+  { en: "The public Preflight API — documented and runnable at /api", hi: "सार्वजनिक प्री-फ़्लाइट API — /api पर दस्तावेज़ और चलाकर देखने योग्य" },
   { en: "Every citation, verification date and confidence level on this page", hi: "इस पृष्ठ का हर उद्धरण, सत्यापन तिथि और विश्वसनीयता स्तर" },
 ];
 

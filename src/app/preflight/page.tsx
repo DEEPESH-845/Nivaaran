@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, CalendarClock, RotateCcw } from "lucide-react";
+import { ArrowRight, CalendarClock, Printer, RotateCcw } from "lucide-react";
 import { Badge, Button, ButtonLink, Callout, Card, SectionLabel } from "@/components/ui";
 import { JourneyRail } from "@/components/journey-rail";
 import { FindingCard } from "@/components/finding-card";
@@ -163,13 +163,33 @@ export default function PreflightPage() {
           </section>
         ) : null}
 
-        <RejectionDecoder
-          initialText={session.personaId ? personaById(session.personaId)?.rejectionText : undefined}
-          presentRuleIds={result.findings.map((f) => f.ruleId)}
-        />
+        {/* Paper is the handoff format for anything that needs another human:
+            an HR desk, an EPFO counter, a family member who reads better than
+            they type. Printing expands every fix panel and every citation. */}
+        {n > 0 ? (
+          <div className="print:hidden">
+            <Button tone="secondary" onClick={() => window.print()}>
+              <Printer aria-hidden className="size-4" strokeWidth={1.8} />
+              {lang === "hi" ? "यह योजना प्रिंट करें" : "Print this plan"}
+            </Button>
+            <p className="mt-2 text-xs leading-relaxed text-ink-mute">
+              {lang === "hi"
+                ? "हर सुधार के चरण और हर स्रोत खुले हुए छपते हैं — इसे नियोक्ता के HR या EPFO काउंटर पर ले जाया जा सकता है।"
+                : "Every fix step and every citation prints expanded, so this can be carried to an employer's HR desk or an EPFO counter."}
+            </p>
+          </div>
+        ) : null}
+
+        <div className="print:hidden">
+          <RejectionDecoder
+            initialText={session.personaId ? personaById(session.personaId)?.rejectionText : undefined}
+            presentRuleIds={result.findings.map((f) => f.ruleId)}
+          />
+        </div>
 
         {/* --------------------------------------------------------- Next */}
-        <Card className="space-y-4 p-5">
+        <Card className="space-y-4 p-5 print:border-0 print:p-0">
+          <div className="space-y-4 print:hidden">
           {n === 0 ? (
             <>
               <p className="text-md leading-relaxed text-ink">
@@ -197,7 +217,9 @@ export default function PreflightPage() {
             </>
           )}
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-4 text-sm">
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-4 text-sm print:hidden">
             <Link href="/sources" className="font-medium text-indigo-600 hover:text-indigo-700">
               {lang === "hi" ? "ये नियम कहाँ से आए" : "Where these rules come from"}
             </Link>

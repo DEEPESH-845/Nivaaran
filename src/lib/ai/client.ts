@@ -1,6 +1,7 @@
 import "server-only";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
+import type { ResponseInput } from "openai/resources/responses/responses";
 import type { z } from "zod";
 
 /**
@@ -15,6 +16,8 @@ import type { z } from "zod";
 
 export const MODEL = process.env.OPENAI_MODEL ?? "gpt-5.6";
 const TIMEOUT_MS = Number(process.env.OPENAI_TIMEOUT_MS ?? 9000);
+/** Vision is materially slower than text; it gets its own, longer deadline. */
+const VISION_TIMEOUT_MS = Number(process.env.OPENAI_VISION_TIMEOUT_MS ?? 15000);
 
 export const aiConfigured = () => Boolean(process.env.OPENAI_API_KEY);
 
@@ -37,24 +40,21 @@ function getClient(): OpenAI | null {
   return client;
 }
 
-export async function structured<S extends z.ZodType>(
+/** The one place a model response is read, and the one place errors become values. */
+async function run<S extends z.ZodType>(
   schema: S,
   schemaName: string,
-  system: string,
-  user: string,
+  input: ResponseInput,
+  timeoutMs: number,
 ): Promise<AiResult<z.infer<S>>> {
   const openai = getClient();
   if (!openai) return { ok: false, reason: "not_configured" };
 
   try {
-    const response = await openai.responses.parse({
-      model: MODEL,
-      input: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      text: { format: zodTextFormat(schema, schemaName) },
-    });
+    const response = await openai.responses.parse(
+      { model: MODEL, input, text: { format: zodTextFormat(schema, schemaName) } },
+      { timeout: timeoutMs },
+    );
 
     for (const output of response.output) {
       if (output.type !== "message") continue;
@@ -75,4 +75,51 @@ export async function structured<S extends z.ZodType>(
     }
     return { ok: false, reason: "error" };
   }
+}
+
+export async function structured<S extends z.ZodType>(
+  schema: S,
+  schemaName: string,
+  system: string,
+  user: string,
+): Promise<AiResult<z.infer<S>>> {
+  return run(
+    schema,
+    schemaName,
+    [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    TIMEOUT_MS,
+  );
+}
+
+/**
+ * Same contract as `structured`, with one image attached.
+ *
+ * `imageDataUrl` is a base64 data URL that lives only for the duration of this
+ * call: it is never written to disk, never logged, and never returned.
+ */
+export async function structuredVision<S extends z.ZodType>(
+  schema: S,
+  schemaName: string,
+  system: string,
+  instruction: string,
+  imageDataUrl: string,
+): Promise<AiResult<z.infer<S>>> {
+  return run(
+    schema,
+    schemaName,
+    [
+      { role: "system", content: system },
+      {
+        role: "user",
+        content: [
+          { type: "input_text", text: instruction },
+          { type: "input_image", image_url: imageDataUrl, detail: "high" },
+        ],
+      },
+    ],
+    VISION_TIMEOUT_MS,
+  );
 }
