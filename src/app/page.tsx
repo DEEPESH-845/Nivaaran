@@ -15,7 +15,8 @@ import { useLang } from "@/lib/i18n/context";
 import { useSession } from "@/lib/state/session";
 import { SOURCES } from "@/lib/rules/sources";
 import { PERSONAS } from "@/content/personas";
-
+import { authenticateWithAadhaar } from "@/lib/auth/mock";
+import { useState } from "react";
 /* ============================================================
    The landing page is one continuous argument, told in eight acts.
 
@@ -148,10 +149,35 @@ export default function Landing() {
   const router = useRouter();
   const jd = SOURCES["epfo-jd-2025"];
 
-  function choose(id: string) {
+  const [authenticating, setAuthenticating] = useState<string | null>(null);
+
+  async function choose(id: string) {
     const persona = PERSONAS.find((p) => p.id === id);
     if (!persona) return;
-    begin(persona.id, persona.facts);
+    
+    setAuthenticating(id);
+    const user = await authenticateWithAadhaar(persona.id);
+    
+    // Live NPCI check before starting session
+    const facts = structuredClone(persona.facts);
+    const ifsc = facts.records.bank?.ifsc ?? facts.records.epfo.ifsc;
+    if (ifsc) {
+      try {
+        const res = await fetch(`/api/ifsc?code=${ifsc}`);
+        const data = await res.json();
+        if (facts.records.bank) {
+          facts.records.bank.ifscValid = data.valid;
+          if (!data.valid && data.retiredTo) facts.records.bank.ifscRetiredTo = data.retiredTo;
+        } else {
+          facts.records.epfo.ifscValid = data.valid;
+          if (!data.valid && data.retiredTo) facts.records.epfo.ifscRetiredTo = data.retiredTo;
+        }
+      } catch (e) {
+        // Fallback on error
+      }
+    }
+    
+    begin(persona.id, facts, user.token);
     router.push("/check");
   }
 
@@ -203,7 +229,7 @@ export default function Landing() {
                     strokeWidth={1.6}
                   />
                   <span className="flex-1 text-md font-medium leading-snug text-ink">
-                    &ldquo;{t(p.saying)}&rdquo;
+                    {authenticating === p.id ? (lang === "hi" ? "सत्यापित हो रहा है..." : "Authenticating...") : `"${t(p.saying)}"`}
                   </span>
                   <span className="flex items-center justify-between gap-2 border-t border-line-soft pt-3">
                     <span className="meta text-ink-faint">

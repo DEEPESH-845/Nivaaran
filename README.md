@@ -14,7 +14,7 @@
 
 ---
 
-[**Live Demo**](https://nivaaran.app/) · [**Demo Script**](docs/DEMO.md) · [**Explore Architecture**](docs/ARCHITECTURE.md)
+[**Live Demo**](https://nivaaran-pi.vercel.app) · [**Demo Script**](docs/DEMO.md) · [**Explore Architecture**](docs/ARCHITECTURE.md)
 
 </div>
 
@@ -63,7 +63,7 @@ And somebody can, because **the fix already exists and is free**: EPFO's circula
 
 | Resource | Link / Command |
 |---|---|
-| **Live Demo** | [nivaaran.app](https://nivaaran.app/) *(deployment URL)* |
+| **Live Demo** | [nivaaran-pi.vercel.app](https://nivaaran-pi.vercel.app) *(deployment URL)* |
 | **Demo Script** | [docs/DEMO.md](docs/DEMO.md) *(full demo script)* |
 | **Run Locally** | `pnpm install && pnpm dev` |
 
@@ -89,7 +89,7 @@ Mark a fix done and the engine re-runs live. For the demo record, one ten-minute
 
 AI never decides eligibility. It does three things determinism cannot:
 
-1. **Document reading and reconciliation:** Photograph an identity document and a passbook at **[/documents](https://nivaaran.app/documents)** and it reads the four fields the check compares. It says **compare**, not *verify*. We cannot authenticate a government document.
+1. **Document reading and reconciliation:** Photograph an identity document and a passbook at **[/documents](https://nivaaran-pi.vercel.app/documents)** and it reads the four fields the check compares. It says **compare**, not *verify*. We cannot authenticate a government document.
 2. **Rejection decoding:** Documented EPFO phrasings are matched by pattern. Only wording the patterns do not recognise reaches a model, and the model can only choose from a **closed list of nine rule ids**.
 3. **Plain language:** Any explanation can be rewritten into the simplest possible wording, in English or Hindi, on demand.
 
@@ -108,7 +108,7 @@ Because the engine is a pure function, it is also a public API — deliberately 
 | **Employer's HRMS** *(at exit)* | The missing exit date — **at source** | Employer / Payroll vendor |
 | **UAN generation** | Name & DOB divergence on day one | EPFO with the employer |
 
-We are not proposing to replace EPFO's backend. We are proposing a **validation layer in front of the queue**. The endpoint is documented and runnable at **[/api](https://nivaaran.app/api)**.
+We are not proposing to replace EPFO's backend. We are proposing a **validation layer in front of the queue**. The endpoint is documented and runnable at **[/api](https://nivaaran-pi.vercel.app/api)**.
 
 ---
 
