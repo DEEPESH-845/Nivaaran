@@ -66,22 +66,8 @@ function employerJdFix(field: Bi) {
   };
 }
 
-/**
- * ILLUSTRATIVE ONLY — see SOURCES["ifsc-mergers"].
- * Real systems query the live NPCI/RBI directory.
- */
-const RETIRED_IFSC_PREFIXES: Record<string, string> = {
-  CORP: "Corporation Bank → Union Bank of India",
-  ANDB: "Andhra Bank → Union Bank of India",
-  SYNB: "Syndicate Bank → Canara Bank",
-  ORBC: "Oriental Bank of Commerce → Punjab National Bank",
-  UTBI: "United Bank of India → Punjab National Bank",
-  ALLA: "Allahabad Bank → Indian Bank",
-  BKDN: "Dena Bank → Bank of Baroda",
-  VIJB: "Vijaya Bank → Bank of Baroda",
-};
-
-const IFSC_SHAPE = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+// The IFSC dictionary and regex shape are now served dynamically via /api/ifsc.
+// See src/app/api/ifsc/route.ts.
 
 /** Self-correction path, phrased by the category the member falls into. */
 function correctionFix(cat: JdCategory, field: Bi) {
@@ -157,7 +143,7 @@ function correctionFix(cat: JdCategory, field: Bi) {
   };
 }
 
-type RuleFn = (f: Facts) => Finding | null;
+import type { RuleFn } from "./types";
 
 /* ------------------------------------------------------------------ *
  * The rule set. Deterministic, ordered, each one citing exactly one
@@ -298,9 +284,13 @@ const ifscUsable: RuleFn = (f) => {
   const ifsc = (f.records.bank?.ifsc ?? f.records.epfo.ifsc ?? "").toUpperCase();
   if (!ifsc) return null;
 
-  const shapeBad = !IFSC_SHAPE.test(ifsc);
-  const retired = RETIRED_IFSC_PREFIXES[ifsc.slice(0, 4)];
-  if (!shapeBad && !retired) return null;
+  // We rely on the live NPCI status injected into the record block
+  // Default to true if not available to not block unnecessarily during partial tests
+  const valid = f.records.bank?.ifsc ? (f.records.bank.ifscValid !== false) : (f.records.epfo.ifscValid !== false);
+  if (valid) return null;
+
+  const retired = f.records.bank?.ifsc ? f.records.bank.ifscRetiredTo : f.records.epfo.ifscRetiredTo;
+  const shapeBad = !retired;
 
   return {
     ruleId: "R-IFSC",

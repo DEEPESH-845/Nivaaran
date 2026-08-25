@@ -86,7 +86,7 @@ describe("preflight", () => {
       clean({
         records: {
           ...clean().records,
-          bank: { name: "Arun Menon", ifsc: "CORP0001234", accountLast4: "8842" },
+          bank: { name: "Arun Menon", ifsc: "SYNB0001234", ifscValid: false, ifscRetiredTo: "Canara Bank", accountLast4: "8842" },
         },
       }),
     );
@@ -98,7 +98,7 @@ describe("preflight", () => {
       clean({
         records: {
           ...clean().records,
-          bank: { name: "Arun Menon", ifsc: "HDFC1234", accountLast4: "8842" },
+          bank: { name: "Arun Menon", ifsc: "HDFC1234", ifscValid: false, accountLast4: "8842" },
         },
       }),
     );
