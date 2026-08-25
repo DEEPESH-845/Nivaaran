@@ -29,6 +29,8 @@ export interface Source {
   confidence: Confidence;
   /** Honest caveat shown alongside the citation. */
   note?: string;
+  domainOwner?: string;
+  changelog?: { date: string; change: string }[];
 }
 
 export type Evidence =
@@ -87,9 +89,9 @@ export interface Facts {
   claimAmount: number;
   panOnRecord: boolean;
   records: {
-    epfo: { name: string; dob: string; ifsc: string; accountLast4: string };
+    epfo: { name: string; dob: string; ifsc: string; accountLast4: string; ifscValid?: boolean; ifscRetiredTo?: string };
     aadhaar?: { name: string; dob: string };
-    bank?: { name: string; ifsc: string; accountLast4: string };
+    bank?: { name: string; ifsc: string; accountLast4: string; ifscValid?: boolean; ifscRetiredTo?: string };
   };
 }
 
@@ -111,3 +113,5 @@ export interface PreflightResult {
  * can self-correct their own record or must route through an employer.
  */
 export type JdCategory = "A" | "B" | "C";
+
+export type RuleFn = (f: Facts) => Finding | null;

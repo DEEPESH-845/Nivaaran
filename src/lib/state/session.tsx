@@ -9,6 +9,7 @@ const KEY = "nivaaran.session.v1";
 
 export interface SessionState {
   personaId?: string;
+  authToken?: string;
   facts?: Facts;
   /** Rule ids the citizen has marked as fixed. */
   resolved: string[];
@@ -44,7 +45,7 @@ interface SessionValue {
   session: SessionState;
   /** False until React has hydrated, so we never redirect on a stale snapshot. */
   ready: boolean;
-  begin: (personaId: string, facts: Facts) => void;
+  begin: (personaId: string, facts: Facts, authToken?: string) => void;
   setFacts: (facts: Facts) => void;
   markFixed: (ruleId: string) => void;
   fileClaim: (amount: number) => string;
@@ -70,9 +71,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     () => ({
       session,
       ready,
-      begin: (personaId, facts) =>
+      begin: (personaId, facts, authToken) =>
         commit({
           personaId,
+          authToken,
           facts,
           original: structuredClone(facts),
           resolved: [],
