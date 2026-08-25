@@ -34,7 +34,7 @@ const BROKEN: Facts = {
   records: {
     epfo: { name: "RAJESH K SHARMA", dob: "1996-03-08", ifsc: "CORP0001234", accountLast4: "8842" },
     aadhaar: { name: "Rajesh Kumar Sharma", dob: "1996-08-03" }, // R-NAME-AADHAAR, R-DOB-AADHAAR
-    bank: { name: "R K Sharma", ifsc: "CORP0001234", accountLast4: "8842" }, // R-BANK-NAME, R-IFSC
+    bank: { name: "R K Sharma", ifsc: "CORP0001234", ifscValid: false, ifscRetiredTo: "Union Bank of India", accountLast4: "8842" }, // R-BANK-NAME, R-IFSC
   },
 };
 

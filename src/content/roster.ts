@@ -112,7 +112,7 @@ export const ROSTER: Leaver[] = [
       records: {
         epfo: { name: "FATIMA SHEIKH", dob: "1995-09-02", ifsc: "ANDB0001199", accountLast4: "4407" },
         aadhaar: { name: "Fatima Sheikh", dob: "1995-09-02" },
-        bank: { name: "Fatima Sheikh", ifsc: "ANDB0001199", accountLast4: "4407" },
+        bank: { name: "Fatima Sheikh", ifsc: "ANDB0001199", ifscValid: false, ifscRetiredTo: "Union Bank of India", accountLast4: "4407" },
       },
     }),
   },
