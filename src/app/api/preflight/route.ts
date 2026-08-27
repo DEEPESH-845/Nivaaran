@@ -43,6 +43,10 @@ const FactsSchema = z.object({
       dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       ifsc: z.string().max(20),
       accountLast4: z.string().max(4),
+      // Optional directory metadata: the engine still validates IFSC format
+      // itself, while these values can additionally flag a retired code.
+      ifscValid: z.boolean().optional(),
+      ifscRetiredTo: z.string().min(1).max(120).optional(),
     }),
     aadhaar: z
       .object({
@@ -55,6 +59,8 @@ const FactsSchema = z.object({
         name: z.string().min(1).max(120),
         ifsc: z.string().max(20),
         accountLast4: z.string().max(4),
+        ifscValid: z.boolean().optional(),
+        ifscRetiredTo: z.string().min(1).max(120).optional(),
       })
       .optional(),
   }),
