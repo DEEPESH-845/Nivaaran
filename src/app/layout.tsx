@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Instrument_Serif, Inter, Noto_Sans_Devanagari } from "next/font/google";
 import { LangProvider } from "@/lib/i18n/context";
 import { SessionProvider } from "@/lib/state/session";
+import { SmoothScrollProvider } from "@/components/providers/SmoothScrollProvider";
 import { Shell } from "@/components/shell";
 import "./globals.css";
 
@@ -46,7 +47,9 @@ export default function RootLayout({
       <body>
         <LangProvider>
           <SessionProvider>
-            <Shell>{children}</Shell>
+            <SmoothScrollProvider>
+              <Shell>{children}</Shell>
+            </SmoothScrollProvider>
           </SessionProvider>
         </LangProvider>
       </body>
