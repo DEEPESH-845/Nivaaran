@@ -1,0 +1,44 @@
+@layer components {
+  .story-root {
+    --story-bg: #0a0a0a;
+    --story-foreground: #fafafa;
+    --story-muted: #a3a3a3;
+    --story-accent: #3b82f6;
+    --story-border: #262626;
+    --story-radius: 12px;
+    --story-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    
+    background-color: var(--story-bg);
+    color: var(--story-foreground);
+    min-height: 100dvh;
+    font-family: var(--font-inter), sans-serif;
+    /* Isolate stacking context so it stays above the shell header */
+    position: relative;
+    z-index: 50;
+    overflow-x: hidden;
+  }
+
+  .story-frame-container {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    opacity: 0; /* All frames invisible by default, GSAP will manage */
+    pointer-events: none; /* Let clicks pass through to active GSAP layers */
+  }
+
+  .story-frame-container.is-active {
+    pointer-events: auto;
+  }
+
+  .story-editorial-text {
+    font-family: var(--font-instrument), serif;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+}
