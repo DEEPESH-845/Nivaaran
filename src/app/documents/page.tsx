@@ -15,6 +15,7 @@ import {
 } from "@/lib/match/reconcile";
 import { useLang } from "@/lib/i18n/context";
 import { useSession } from "@/lib/state/session";
+import { isValidIfscFormat } from "@/lib/rules/rules";
 import type { Bi, Facts } from "@/lib/rules/types";
 
 /**
@@ -99,11 +100,16 @@ function merge(facts: Facts, identity: DocumentValues, bank: DocumentValues): Fa
     };
   }
   if (bank.name || bank.ifsc || bank.accountLast4) {
+    const ifsc = bank.ifsc?.trim().toUpperCase() || r.bank?.ifsc || r.epfo.ifsc;
     r.bank = {
       name: bank.name?.trim() || r.bank?.name || r.epfo.name,
-      ifsc: bank.ifsc?.trim().toUpperCase() || r.bank?.ifsc || r.epfo.ifsc,
+      ifsc,
       accountLast4: bank.accountLast4?.trim() || r.bank?.accountLast4 || r.epfo.accountLast4,
     };
+    // A newly read or edited code has no directory result yet. Do not carry a
+    // previous IFSC's lookup status forward; malformed values are marked false
+    // here and are also caught directly by the rule engine.
+    if (bank.ifsc?.trim()) r.bank.ifscValid = isValidIfscFormat(ifsc) ? undefined : false;
   }
   return next;
 }

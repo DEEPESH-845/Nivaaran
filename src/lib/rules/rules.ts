@@ -16,6 +16,12 @@ export function jdCategory(f: Facts): JdCategory {
 
 const PORTAL = "https://unifiedportal-mem.epfindia.gov.in/memberinterface/";
 const EMPLOYER_PORTAL = "https://unifiedportal-emp.epfindia.gov.in/epfo/";
+const IFSC_SHAPE = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+
+/** A syntactically valid IFSC is always four letters, a zero, then six letters or digits. */
+export function isValidIfscFormat(value: string): boolean {
+  return IFSC_SHAPE.test(value.trim().toUpperCase());
+}
 
 /**
  * Employer steps are written at the level our sources actually support — the
@@ -281,15 +287,25 @@ const bankNameMatch: RuleFn = (f) => {
 };
 
 const ifscUsable: RuleFn = (f) => {
-  const ifsc = (f.records.bank?.ifsc ?? f.records.epfo.ifsc ?? "").toUpperCase();
+  const ifsc = (f.records.bank?.ifsc ?? f.records.epfo.ifsc ?? "").trim().toUpperCase();
   if (!ifsc) return null;
 
-  // We rely on the live NPCI status injected into the record block
-  // Default to true if not available to not block unnecessarily during partial tests
+  // Format validation is intrinsic to the engine. A directory lookup can add
+  // retirement information, but a missing lookup must never make bad input pass.
+  if (!isValidIfscFormat(ifsc)) {
+    return ifscFinding(ifsc, undefined);
+  }
+
+  // A directory lookup is optional. When available, it can additionally flag
+  // a syntactically-valid IFSC that has been retired after a bank merger.
   const valid = f.records.bank?.ifsc ? (f.records.bank.ifscValid !== false) : (f.records.epfo.ifscValid !== false);
   if (valid) return null;
 
   const retired = f.records.bank?.ifsc ? f.records.bank.ifscRetiredTo : f.records.epfo.ifscRetiredTo;
+  return ifscFinding(ifsc, retired);
+};
+
+function ifscFinding(ifsc: string, retired: string | undefined): Finding {
   const shapeBad = !retired;
 
   return {
@@ -351,7 +367,7 @@ const ifscUsable: RuleFn = (f) => {
     },
     sourceId: "ifsc-mergers",
   };
-};
+}
 
 const aadhaarSeeded: RuleFn = (f) => {
   if (f.uanAadhaarVerified === "yes") return null;

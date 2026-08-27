@@ -93,16 +93,41 @@ describe("preflight", () => {
     expect(r.findings.some((f) => f.ruleId === "R-IFSC")).toBe(true);
   });
 
-  it("rejects a malformed IFSC", () => {
+  it("rejects a malformed IFSC without requiring external lookup metadata", () => {
     const r = preflight(
       clean({
         records: {
           ...clean().records,
-          bank: { name: "Arun Menon", ifsc: "HDFC1234", ifscValid: false, accountLast4: "8842" },
+          bank: { name: "Arun Menon", ifsc: "HDFC1234", accountLast4: "8842" },
         },
       }),
     );
     expect(r.findings.some((f) => f.ruleId === "R-IFSC")).toBe(true);
+  });
+
+  it("uses the malformed-format finding when a malformed IFSC has retirement metadata", () => {
+    const r = preflight(
+      clean({
+        records: {
+          ...clean().records,
+          bank: {
+            name: "Arun Menon",
+            ifsc: "HDFC1234",
+            ifscValid: false,
+            ifscRetiredTo: "HDFC Bank",
+            accountLast4: "8842",
+          },
+        },
+      }),
+    );
+    const finding = r.findings.find((f) => f.ruleId === "R-IFSC");
+    expect(finding?.title.en).toBe("That IFSC is not a valid code");
+    expect(finding?.evidence).toMatchObject({ b: "Invalid format" });
+  });
+
+  it("accepts a valid-format IFSC when no optional directory status is present", () => {
+    const r = preflight(clean());
+    expect(r.findings.some((f) => f.ruleId === "R-IFSC")).toBe(false);
   });
 
   it("blocks a final settlement filed before sixty days and says how many remain", () => {
