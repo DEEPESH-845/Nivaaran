@@ -37,15 +37,31 @@ function token(el: Element, name: string, fallback: string) {
   return v || fallback;
 }
 
+/**
+ * getComputedStyle forces a style recalc, so it must not run inside the draw.
+ * The palette is fixed — there is no dark mode — so one read holds for the
+ * life of the canvas.
+ */
+function palette(cv: HTMLCanvasElement) {
+  return {
+    pass: token(cv, "--color-line", "#e3e3e8"),
+    fail: token(cv, "--color-blocked-500", "#b4532b"),
+  };
+}
+
 export function ScaleField() {
   const { t } = useLang();
   const sceneRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const render = useCanvas(canvasRef, (ctx, w, h, p: number) => {
+  const inks = useRef<ReturnType<typeof palette> | null>(null);
+
+  // `limit` is how many marks are lit — 0 to 174. The scene has 175 distinct
+  // frames, so that is what the canvas is keyed on rather than raw scroll
+  // progress: scrubbing past the same integer redraws nothing.
+  const render = useCanvas(canvasRef, (ctx, w, h, limit: number) => {
     const cv = ctx.canvas;
-    const pass = token(cv, "--color-line", "#e3e3e8");
-    const fail = token(cv, "--color-blocked-500", "#b4532b");
+    const { pass, fail } = (inks.current ??= palette(cv));
 
     const cols = Math.max(24, Math.ceil(Math.sqrt(MARKS * (w / Math.max(h, 1)))));
     const rows = Math.ceil(MARKS / cols);
@@ -55,7 +71,6 @@ export function ScaleField() {
     const oy = (h - rows * cell) / 2 + (cell - size) / 2;
 
     let shown = 0;
-    const limit = Math.round(p * FAILED);
 
     for (let i = 0; i < MARKS; i++) {
       const bad = (i * SCATTER) % MARKS < FAILED;
@@ -75,7 +90,10 @@ export function ScaleField() {
     ctx.globalAlpha = 1;
   }, 0);
 
-  const step = useSceneProgress(sceneRef, { steps: 58, onFrame: render });
+  const step = useSceneProgress(sceneRef, {
+    steps: 58,
+    onFrame: (p) => render(Math.round(p * FAILED)),
+  });
   const counted = ((1.74 * step) / 58).toFixed(2);
 
   return (
