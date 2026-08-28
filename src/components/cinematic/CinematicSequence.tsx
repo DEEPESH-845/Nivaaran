@@ -1,27 +1,78 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+
 import { FrameRenderer } from "./FrameRenderer";
-import { OverlayContent } from "./OverlayContent";
-import { StoryCTA } from "../story/StoryCTA"; // Re-using existing CTA without modifying it
+import { BEAT_COPY, OverlayContent } from "./OverlayContent";
+import { BEATS, STILL_QUERY, frameSrc } from "./config";
+import { StoryCTA } from "../story/StoryCTA";
+
+/**
+ * The same six beats, told in stills. A reader who has asked for stillness
+ * gets the story, not a blank pinned canvas — and this is also what a printer
+ * and a crawler see.
+ */
+function StillSequence() {
+  return (
+    <div className="mx-auto max-w-2xl px-5 py-16 sm:py-24">
+      <ol className="space-y-16">
+        {BEAT_COPY.map((beat, i) => (
+          <li key={beat.key}>
+            <Image
+              src={frameSrc("w768", BEATS[i].frame)}
+              alt={beat.alt}
+              width={768}
+              height={432}
+              className="w-full rounded-card"
+              priority={i === 0}
+            />
+            <h2 className="mt-6 text-balance text-[clamp(1.5rem,5vw,2.25rem)] font-semibold leading-tight tracking-tight text-white">
+              {beat.head.join(" ")}
+            </h2>
+            <p className="mt-2 text-balance text-md leading-relaxed text-white/70">
+              {beat.sub}
+            </p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
 
 export function CinematicSequence() {
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Rendered on the server and on the first client paint, so the markup
+  // matches; the swap happens on mount for the few readers who need it.
+  const [still, setStill] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia(STILL_QUERY);
+    const apply = () => setStill(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
   return (
-    <div className="relative w-full bg-black">
+    <div className="relative w-full overflow-x-clip bg-black">
+      {still ? (
+        <StillSequence />
+      ) : (
+        /* The pin target. 100dvh so an iOS URL bar cannot push it taller than
+           the screen and leave the caption cropped. */
+        <div
+          ref={containerRef}
+          className="relative h-[100dvh] w-full overflow-hidden bg-black"
+        >
+          <FrameRenderer scrollContainerRef={containerRef} />
+          <OverlayContent scrollContainerRef={containerRef} />
+        </div>
+      )}
 
-      {/* 
-        This is the trigger container for ScrollTrigger. 
-        It will be pinned by FrameRenderer, and OverlayContent will scrub its animations based on it.
-      */}
-      <div ref={containerRef} className="relative w-full h-[100dvh] overflow-hidden bg-black">
-        <FrameRenderer scrollContainerRef={containerRef} frameCount={260} />
-        <OverlayContent scrollContainerRef={containerRef} />
-      </div>
-
-      {/* Post-story CTA that scrolls naturally into view after unpin */}
-      <div className="relative w-full min-h-[50vh] flex flex-col items-center justify-center bg-black py-24 z-10 border-t border-white/5">
+      {/* Scrolls naturally into view once the sequence unpins. */}
+      <div className="relative z-10 flex w-full flex-col items-center justify-center border-t border-white/10 bg-black px-5 py-20 sm:py-28">
         <StoryCTA />
       </div>
     </div>

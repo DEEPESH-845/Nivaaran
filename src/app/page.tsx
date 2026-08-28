@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowDown, ArrowRight, FileWarning, ShieldCheck, Wallet } from "lucide-react";
+import { ArrowDown, ArrowRight, FileWarning, Play, ShieldCheck, Wallet } from "lucide-react";
 
 import { Badge, ButtonLink } from "@/components/ui";
 import { Reveal } from "@/components/motion/reveal";
@@ -57,6 +57,17 @@ const COPY = {
     en: "Each option loads a synthetic member record so you can see the whole journey. No real data is used anywhere.",
     hi: "हर विकल्प एक काल्पनिक सदस्य रिकॉर्ड खोलता है ताकि आप पूरी यात्रा देख सकें। कहीं भी असली डेटा इस्तेमाल नहीं होता।",
   },
+
+  experienceLabel: { en: "The 90-second version", hi: "नब्बे सेकंड वाला रूप" },
+  experienceHeading: {
+    en: "Watch it happen to Arjun.",
+    hi: "यह अर्जुन के साथ होते हुए देखें।",
+  },
+  experienceBody: {
+    en: "The same argument, without reading it. A scrolled film: one record, one mismatch, and the twenty days it costs.",
+    hi: "वही बात, बिना पढ़े। स्क्रॉल से चलने वाली एक फ़िल्म: एक रिकॉर्ड, एक गड़बड़ी, और उसकी क़ीमत — बीस दिन।",
+  },
+  experienceCta: { en: "Start the story", hi: "कहानी शुरू करें" },
 
   scaleHeading: {
     en: "One in five. Every year. Almost all of it preventable before submission.",
@@ -252,7 +263,41 @@ export default function Landing() {
           {t(COPY.demoNote)}
         </p>
 
-        <p className="meta mt-8 flex items-center gap-2 text-ink-faint">
+        {/* The other door: the whole argument as a scrolled film, for anyone
+            who would rather be shown than read. Full-bleed and dark so it
+            reads as a different medium, not another card. */}
+        <Reveal className="bleed mt-10 sm:mt-12">
+          <Link
+            href="/story"
+            className="group relative flex min-h-[18rem] items-end overflow-hidden bg-night sm:min-h-[21rem]"
+          >
+            <span
+              aria-hidden
+              className="absolute inset-0 bg-[url('/Frames/w768/0200.webp')] bg-cover bg-[position:68%_center] transition-transform duration-700 ease-(--ease-entry) motion-safe:group-hover:scale-[1.04]"
+            />
+            <span
+              aria-hidden
+              className="absolute inset-0 bg-[linear-gradient(to_right,rgba(12,13,20,0.96)_0%,rgba(12,13,20,0.88)_42%,rgba(12,13,20,0.45)_100%)]"
+            />
+            <span className="relative mx-auto w-full max-w-5xl px-4 py-10 sm:py-14">
+              <span className="meta block text-signal">
+                {t(COPY.experienceLabel)}
+              </span>
+              <span className="display mt-3 block max-w-md text-balance text-night-ink">
+                {t(COPY.experienceHeading)}
+              </span>
+              <span className="mt-4 block max-w-sm text-base leading-relaxed text-night-soft">
+                {t(COPY.experienceBody)}
+              </span>
+              <span className="mt-7 inline-flex min-h-11 items-center gap-2.5 rounded-ctl border border-night-edge px-5 text-md font-medium text-night-ink transition-colors duration-150 group-hover:border-night-ink group-hover:bg-white/10">
+                <Play aria-hidden className="size-4 fill-current" strokeWidth={0} />
+                {t(COPY.experienceCta)}
+              </span>
+            </span>
+          </Link>
+        </Reveal>
+
+        <p className="meta mt-10 flex items-center gap-2 text-ink-faint">
           <ArrowDown aria-hidden className="size-3.5" strokeWidth={1.8} />
           {t(COPY.scrollCue)}
         </p>

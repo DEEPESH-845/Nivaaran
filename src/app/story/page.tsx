@@ -1,7 +1,6 @@
 import React from "react";
 import { Metadata } from "next";
 import { CinematicSequence } from "@/components/cinematic/CinematicSequence";
-import "./story.css";
 
 export const metadata: Metadata = {
   title: "Nivaaran — Experience the Journey",
@@ -10,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function StoryPage() {
   return (
-    <div className="relative w-full min-h-screen bg-black">
+    <div className="relative w-full min-h-dvh overflow-x-clip bg-black">
       <CinematicSequence />
     </div>
   );

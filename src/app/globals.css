@@ -124,7 +124,14 @@
 
   html {
     -webkit-text-size-adjust: 100%;
-    scroll-behavior: smooth;
+    /* No `scroll-behavior: smooth`. The browser's smooth scroll and Lenis
+       would both be animating the same scroll position — that is the double
+       smoothing that shows up as drift and overshoot on anchor jumps. Hash
+       links are handled by Lenis instead (see SmoothScrollProvider). */
+    /* `clip`, never `hidden`: hidden would make <html> a scroll container and
+       break both the sticky header and every pinned ScrollTrigger. This is
+       what stops a full-bleed 100vw band from adding a sideways scrollbar. */
+    overflow-x: clip;
   }
 
   body {
