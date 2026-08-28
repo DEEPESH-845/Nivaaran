@@ -7,7 +7,7 @@ import { ArrowRight } from "lucide-react";
 export function StoryCTA({ className = "" }: { className?: string }) {
   return (
     <div className={`flex flex-col items-center justify-center space-y-6 ${className}`}>
-      <h2 className="story-editorial-text text-4xl sm:text-5xl md:text-6xl text-center mb-8">
+      <h2 className="font-display tracking-[-0.02em] text-paper text-4xl sm:text-5xl md:text-6xl text-center mb-8">
         Ready to make PF simpler?
       </h2>
       <Link 

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function StoryPage() {
   return (
-    <div className="relative z-50 w-full min-h-screen bg-black">
+    <div className="relative w-full min-h-screen bg-black">
       <CinematicSequence />
     </div>
   );

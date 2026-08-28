@@ -194,7 +194,7 @@ export function FrameRenderer({ scrollContainerRef, frameCount = 260 }: FrameRen
       start: "top top",
       end: "+=800%", 
       pin: true,
-      scrub: 0.5, // Reduced from 1.2 to 0.5 for tighter tracking while remaining smooth
+      scrub: 1.2, // Increased from 0.5 for smoother scroll interpolation
       onUpdate: (self) => {
         // Map 0-1 progress to 1-260 frames
         const frame = 1 + self.progress * (frameCount - 1);

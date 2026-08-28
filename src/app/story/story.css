@@ -12,9 +12,9 @@
     color: var(--story-foreground);
     min-height: 100dvh;
     font-family: var(--font-inter), sans-serif;
-    /* Isolate stacking context so it stays above the shell header */
+    /* Isolate stacking context so it stays below the shell header */
     position: relative;
-    z-index: 50;
+    z-index: 10;
     overflow-x: hidden;
   }
 

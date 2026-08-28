@@ -1,8 +1,10 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLang } from "@/lib/i18n/context";
+import { Menu, X } from "lucide-react";
 
 /**
  * Persistent, unmissable disclosure. Required by the brief and by decency.
@@ -12,26 +14,30 @@ import { useLang } from "@/lib/i18n/context";
 function NoticeBar() {
   const { ui } = useLang();
   return (
-    <div className="bg-ink text-paper print:border-b print:border-line print:bg-transparent print:text-ink">
-      <p className="mx-auto max-w-5xl px-4 py-1.5 text-2xs leading-snug tracking-[0.01em] text-paper/85 print:px-0 print:text-ink-soft sm:text-xs">
+    <div className="bg-transparent text-ink-mute print:border-b print:border-line print:bg-transparent print:text-ink">
+      <p className="mx-auto max-w-5xl px-4 py-1.5 text-2xs leading-snug tracking-[0.01em] print:px-0 print:text-ink-soft sm:text-xs text-center">
         {ui("notOfficial")}
       </p>
     </div>
   );
 }
 
-function LangToggle() {
+function LangToggle({ isDark = false }: { isDark?: boolean }) {
   const { lang, setLang, ui } = useLang();
   return (
     <button
       type="button"
       onClick={() => setLang(lang === "en" ? "hi" : "en")}
-      className="inline-flex min-h-11 items-center gap-1.5 rounded-ctl border border-line-strong bg-paper-raised px-3 text-sm font-medium text-ink transition-colors hover:border-ink-mute hover:bg-paper-sunk"
+      className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-ctl border px-3 text-sm font-medium transition-colors ${
+        isDark
+          ? "border-white/20 bg-white/5 text-white hover:bg-white/10"
+          : "border-line-strong bg-paper-raised text-ink hover:border-ink-mute hover:bg-paper-sunk"
+      }`}
       aria-label={
         lang === "en" ? "हिंदी में देखें / Switch to Hindi" : "Switch to English"
       }
     >
-      <svg aria-hidden viewBox="0 0 16 16" className="size-4 text-ink-mute">
+      <svg aria-hidden viewBox="0 0 16 16" className="size-4 opacity-70">
         <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" strokeWidth="1.3" />
         <path d="M1.75 8h12.5M8 1.75c1.7 1.9 2.55 4 2.55 6.25S9.7 12.35 8 14.25c-1.7-1.9-2.55-4-2.55-6.25S6.3 3.65 8 1.75z" fill="none" stroke="currentColor" strokeWidth="1.3" />
       </svg>
@@ -40,18 +46,18 @@ function LangToggle() {
   );
 }
 
-function Wordmark() {
+function Wordmark({ isDark = false }: { isDark?: boolean }) {
   const { lang } = useLang();
   return (
     <Link
       href="/"
-      className="group inline-flex items-baseline gap-2 rounded-ctl"
+      className="group inline-flex items-baseline gap-2 rounded-ctl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
       aria-label="Nivaaran — home"
     >
-      <span className="font-display text-2xl leading-none tracking-[-0.02em] text-ink">
+      <span className={`font-display text-2xl leading-none tracking-[-0.02em] transition-colors ${isDark ? "text-white" : "text-ink"}`}>
         {lang === "hi" ? "निवारण" : "Nivaaran"}
       </span>
-      <span className="hidden text-2xs font-medium uppercase tracking-[0.12em] text-ink-faint sm:inline">
+      <span className={`hidden text-2xs font-medium uppercase tracking-[0.12em] transition-colors sm:inline ${isDark ? "text-white/60" : "text-ink-faint"}`}>
         {lang === "hi" ? "Nivaaran" : "निवारण"}
       </span>
     </Link>
@@ -63,6 +69,42 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const onLanding = pathname === "/";
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // /story has a completely dark background
+  const isCinematic = pathname === "/story";
+
+  // Lock scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenuOpen]);
+
+  // Close menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  const navLinks = [
+    { href: "/why", label: lang === "hi" ? "यह बेहतर क्यों है" : "Why this is better" },
+    { href: "/documents", label: lang === "hi" ? "दस्तावेज़ मिलान" : "Compare documents" },
+    { href: "/employer", label: lang === "hi" ? "नियोक्ताओं के लिए" : "For employers" },
+  ];
+
+  const headerClass = isCinematic 
+    ? "bg-black/50 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-black/40 border-white/10" 
+    : "bg-paper/80 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-paper/60 border-line/40";
+    
+  const mobileBgClass = isCinematic 
+    ? "bg-black/80 backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-black/70" 
+    : "bg-paper/90 backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-paper/70";
+
   return (
     <div className="flex min-h-dvh flex-col">
       <a href="#main" className="skip-link">
@@ -71,30 +113,92 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <NoticeBar />
 
-      {/* Opaque, not frosted: the landing narrative runs a full-bleed dark act
-          underneath this bar, and translucency let its text bleed through. */}
-      <header className="sticky top-0 z-40 border-b border-line bg-paper print:hidden">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-2.5">
-          <Wordmark />
-          <div className="flex items-center gap-2">
-            {!onLanding && (
-              <Link
-                href="/why"
-                className="hidden min-h-11 items-center rounded-ctl px-3 text-sm font-medium text-ink-soft transition-colors hover:bg-paper-sunk hover:text-ink sm:inline-flex"
-              >
-                {lang === "hi" ? "यह बेहतर क्यों है" : "Why this is better"}
-              </Link>
-            )}
-            <LangToggle />
+      <header className={`sticky top-0 z-40 border-b print:hidden transition-colors duration-300 ${headerClass}`}>
+        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
+          <Wordmark isDark={isCinematic} />
+          
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-6">
+            <nav className="flex items-center gap-5">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`text-sm font-medium transition-colors ${
+                    isCinematic ? "text-white/80 hover:text-white" : "text-ink-soft hover:text-ink"
+                  } ${pathname === link.href ? (isCinematic ? 'text-white' : 'text-ink') : ''}`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+            <div className={`h-4 w-px ${isCinematic ? 'bg-white/20' : 'bg-line-strong'}`}></div>
+            <LangToggle isDark={isCinematic} />
+            <Link 
+              href="/#start"
+              className={`inline-flex min-h-[40px] items-center justify-center rounded-ctl px-4 text-sm font-medium transition-transform active:scale-95 ${
+                isCinematic 
+                  ? "bg-white text-black hover:bg-gray-100" 
+                  : "bg-indigo-600 text-paper hover:bg-indigo-700"
+              }`}
+            >
+              {lang === "hi" ? "दावा जाँचें" : "Check a claim"}
+            </Link>
+          </div>
+
+          {/* Mobile Toggle */}
+          <div className="flex md:hidden items-center gap-3">
+            <LangToggle isDark={isCinematic} />
+            <button
+              type="button"
+              className={`p-2 -mr-2 rounded-md transition-colors ${
+                isCinematic ? "text-white hover:bg-white/10" : "text-ink hover:bg-paper-sunk"
+              }`}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
           </div>
         </div>
       </header>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div className={`fixed inset-0 z-30 top-16 flex flex-col px-4 py-6 md:hidden overflow-y-auto ${mobileBgClass}`}>
+          <nav className="flex flex-col gap-4 text-lg">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`block py-3 font-medium border-b ${
+                  isCinematic ? "border-white/10 text-white/90" : "border-line text-ink"
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <Link 
+              href="/#start"
+              className={`mt-4 flex w-full min-h-[48px] items-center justify-center rounded-ctl px-4 text-base font-medium transition-transform active:scale-95 ${
+                isCinematic 
+                  ? "bg-white text-black" 
+                  : "bg-indigo-600 text-paper"
+              }`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {lang === "hi" ? "दावा जाँचें" : "Check a claim"}
+            </Link>
+          </nav>
+        </div>
+      )}
 
       <main id="main" className="flex-1">
         {children}
       </main>
 
-      <footer className="mt-16 border-t border-line bg-paper-sunk print:mt-6 print:bg-transparent">
+      <footer className="mt-16 bg-paper-sunk/70 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-paper-sunk/50 print:mt-6 print:bg-transparent">
         <div className="mx-auto max-w-5xl space-y-4 px-4 py-8 print:px-0 print:py-4">
           <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm print:hidden">
             <Link href="/why" className="font-medium text-indigo-600 hover:text-indigo-700">
