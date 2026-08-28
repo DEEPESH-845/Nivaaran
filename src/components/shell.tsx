@@ -69,7 +69,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const onLanding = pathname === "/";
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Which route the menu was opened on. Deriving `open` from it closes the
+  // menu on navigation without an effect that fires a cascading render.
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const mobileMenuOpen = menuFor === pathname;
+  const setMobileMenuOpen = (open: boolean) => setMenuFor(open ? pathname : null);
 
   // /story has a completely dark background
   const isCinematic = pathname === "/story";
@@ -86,12 +90,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
     };
   }, [mobileMenuOpen]);
 
-  // Close menu on route change
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [pathname]);
-
   const navLinks = [
+    { href: "/story", label: lang === "hi" ? "अनुभव करें" : "Experience" },
     { href: "/why", label: lang === "hi" ? "यह बेहतर क्यों है" : "Why this is better" },
     { href: "/documents", label: lang === "hi" ? "दस्तावेज़ मिलान" : "Compare documents" },
     { href: "/employer", label: lang === "hi" ? "नियोक्ताओं के लिए" : "For employers" },
@@ -118,7 +118,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Wordmark isDark={isCinematic} />
           
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden lg:flex items-center gap-6">
             <nav className="flex items-center gap-5">
               {navLinks.map((link) => (
                 <Link
@@ -147,11 +147,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Mobile Toggle */}
-          <div className="flex md:hidden items-center gap-3">
+          <div className="flex lg:hidden items-center gap-3">
             <LangToggle isDark={isCinematic} />
             <button
               type="button"
-              className={`p-2 -mr-2 rounded-md transition-colors ${
+              className={`-mr-2 inline-flex size-11 items-center justify-center rounded-md transition-colors ${
                 isCinematic ? "text-white hover:bg-white/10" : "text-ink hover:bg-paper-sunk"
               }`}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -161,11 +161,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </button>
           </div>
         </div>
-      </header>
 
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
-        <div className={`fixed inset-0 z-30 top-16 flex flex-col px-4 py-6 md:hidden overflow-y-auto ${mobileBgClass}`}>
+        <div className={`absolute inset-x-0 top-full z-30 flex max-h-[calc(100dvh-4rem)] flex-col overflow-y-auto px-4 py-6 lg:hidden ${mobileBgClass}`}>
           <nav className="flex flex-col gap-4 text-lg">
             {navLinks.map((link) => (
               <Link
@@ -193,6 +192,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
       )}
+      </header>
 
       <main id="main" className="flex-1">
         {children}
@@ -201,6 +201,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <footer className="mt-16 bg-paper-sunk/70 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-paper-sunk/50 print:mt-6 print:bg-transparent">
         <div className="mx-auto max-w-5xl space-y-4 px-4 py-8 print:px-0 print:py-4">
           <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm print:hidden">
+            <Link href="/story" className="font-medium text-indigo-600 hover:text-indigo-700">
+              {lang === "hi" ? "कहानी अनुभव करें" : "Experience the story"}
+            </Link>
             <Link href="/why" className="font-medium text-indigo-600 hover:text-indigo-700">
               {lang === "hi" ? "यह बेहतर क्यों है" : "Why this is better"}
             </Link>
