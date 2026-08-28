@@ -33,94 +33,94 @@ export const BEAT_COPY: readonly {
   sub: Bi;
   alt: Bi;
 }[] = [
-  {
-    key: "intro",
-    in: 2,
-    out: 12,
-    head: { en: ["Meet Arjun."], hi: ["मिलिए अर्जुन से।"] },
-    sub: {
-      en: "He just wants to take care of his PF.",
-      hi: "वह बस अपने PF का काम निपटाना चाहता है।",
+    {
+      key: "intro",
+      in: 2,
+      out: 12,
+      head: { en: ["Meet Arjun."], hi: ["मिलिए अर्जुन से।"] },
+      sub: {
+        en: "He just wants to take care of his PF.",
+        hi: "वह बस अपने PF का काम निपटाना चाहता है।",
+      },
+      alt: {
+        en: "Arjun at home, arms folded, at ease.",
+        hi: "अर्जुन घर पर, बाँहें बाँधे, आराम से।",
+      },
     },
-    alt: {
-      en: "Arjun at home, arms folded, at ease.",
-      hi: "अर्जुन घर पर, बाँहें बाँधे, आराम से।",
+    {
+      key: "beat1",
+      in: 17,
+      out: 32,
+      head: {
+        en: ["Then he tries to navigate", "the EPFO process."],
+        hi: ["फिर वह EPFO की प्रक्रिया से", "गुज़रने की कोशिश करता है।"],
+      },
+      sub: {
+        en: "It’s a maze of forms and portals.",
+        hi: "फ़ॉर्म और पोर्टल की भूलभुलैया है।",
+      },
+      alt: {
+        en: "Arjun looking at his phone, working through the EPFO portal.",
+        hi: "अर्जुन अपने फ़ोन पर EPFO पोर्टल खंगालते हुए।",
+      },
     },
-  },
-  {
-    key: "beat1",
-    in: 17,
-    out: 32,
-    head: {
-      en: ["Then he tries to navigate", "the EPFO process."],
-      hi: ["फिर वह EPFO की प्रक्रिया से", "गुज़रने की कोशिश करता है।"],
+    {
+      key: "transition",
+      in: 37,
+      out: 52,
+      head: {
+        en: ["What should be simple", "becomes complicated."],
+        hi: ["जो आसान होना चाहिए", "वह उलझ जाता है।"],
+      },
+      sub: {
+        en: "He doesn’t know what happens next.",
+        hi: "उसे पता नहीं आगे क्या होगा।",
+      },
+      alt: {
+        en: "Arjun frowning at his phone, unsure what went wrong.",
+        hi: "अर्जुन फ़ोन देखकर परेशान, समझ नहीं आ रहा कहाँ चूक हुई।",
+      },
     },
-    sub: {
-      en: "It’s a maze of forms and portals.",
-      hi: "फ़ॉर्म और पोर्टल की भूलभुलैया है।",
+    {
+      key: "reveal",
+      in: 57,
+      out: 72,
+      head: {
+        en: ["Until he discovers", "a new way."],
+        hi: ["जब तक उसे मिलता है", "एक नया रास्ता।"],
+      },
+      sub: { en: "Clear, transparent, and direct.", hi: "साफ़, पारदर्शी और सीधा।" },
+      alt: {
+        en: "Arjun holding up his phone, the Nivaaran app open on it.",
+        hi: "अर्जुन फ़ोन उठाए हुए, उस पर निवारण खुला है।",
+      },
     },
-    alt: {
-      en: "Arjun looking at his phone, working through the EPFO portal.",
-      hi: "अर्जुन अपने फ़ोन पर EPFO पोर्टल खंगालते हुए।",
+    {
+      key: "detail",
+      in: 77,
+      out: 87,
+      head: {
+        en: ["Now he knows exactly what to do."],
+        hi: ["अब उसे ठीक-ठीक पता है कि क्या करना है।"],
+      },
+      sub: { en: "See where things stand.", hi: "देखिए बात कहाँ तक पहुँची है।" },
+      alt: {
+        en: "Arjun reading a plain list of what to fix.",
+        hi: "अर्जुन सादा सूची पढ़ रहा है कि क्या ठीक करना है।",
+      },
     },
-  },
-  {
-    key: "transition",
-    in: 37,
-    out: 52,
-    head: {
-      en: ["What should be simple", "becomes complicated."],
-      hi: ["जो आसान होना चाहिए", "वह उलझ जाता है।"],
+    {
+      key: "final",
+      in: 92,
+      out: null,
+      head: {
+        en: ["Your PF journey", "should feel this simple."],
+        hi: ["आपका PF का सफ़र", "इतना ही आसान होना चाहिए।"],
+      },
+      sub: { en: "Understand. Act. Resolve.", hi: "समझें। कदम उठाएँ। निपटाएँ।" },
+      alt: { en: "Arjun, done, phone lowered.", hi: "अर्जुन, काम पूरा, फ़ोन नीचे।" },
     },
-    sub: {
-      en: "He doesn’t know what happens next.",
-      hi: "उसे पता नहीं आगे क्या होगा।",
-    },
-    alt: {
-      en: "Arjun frowning at his phone, unsure what went wrong.",
-      hi: "अर्जुन फ़ोन देखकर परेशान, समझ नहीं आ रहा कहाँ चूक हुई।",
-    },
-  },
-  {
-    key: "reveal",
-    in: 57,
-    out: 72,
-    head: {
-      en: ["Until he discovers", "a new way."],
-      hi: ["जब तक उसे मिलता है", "एक नया रास्ता।"],
-    },
-    sub: { en: "Clear, transparent, and direct.", hi: "साफ़, पारदर्शी और सीधा।" },
-    alt: {
-      en: "Arjun holding up his phone, the Nivaaran app open on it.",
-      hi: "अर्जुन फ़ोन उठाए हुए, उस पर निवारण खुला है।",
-    },
-  },
-  {
-    key: "detail",
-    in: 77,
-    out: 87,
-    head: {
-      en: ["Now he knows exactly what to do."],
-      hi: ["अब उसे ठीक-ठीक पता है कि क्या करना है।"],
-    },
-    sub: { en: "See where things stand.", hi: "देखिए बात कहाँ तक पहुँची है।" },
-    alt: {
-      en: "Arjun reading a plain list of what to fix.",
-      hi: "अर्जुन सादा सूची पढ़ रहा है कि क्या ठीक करना है।",
-    },
-  },
-  {
-    key: "final",
-    in: 92,
-    out: null,
-    head: {
-      en: ["Your PF journey", "should feel this simple."],
-      hi: ["आपका PF का सफ़र", "इतना ही आसान होना चाहिए।"],
-    },
-    sub: { en: "Understand. Act. Resolve.", hi: "समझें। कदम उठाएँ। निपटाएँ।" },
-    alt: { en: "Arjun, done, phone lowered.", hi: "अर्जुन, काम पूरा, फ़ोन नीचे।" },
-  },
-];
+  ];
 
 const CUE: Bi = { en: "Scroll", hi: "स्क्रॉल करें" };
 

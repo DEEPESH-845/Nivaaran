@@ -30,11 +30,10 @@ function LangToggle({ isDark = false }: { isDark?: boolean }) {
     <button
       type="button"
       onClick={() => setLang(lang === "en" ? "hi" : "en")}
-      className={`inline-flex min-h-[40px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-ctl border px-3 text-sm font-medium transition-colors ${
-        isDark
+      className={`inline-flex min-h-[40px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-ctl border px-3 text-sm font-medium transition-colors ${isDark
           ? "border-white/20 bg-white/5 text-white hover:bg-white/10"
           : "border-line-strong bg-paper-raised text-ink hover:border-ink-mute hover:bg-paper-sunk"
-      }`}
+        }`}
       aria-label={
         lang === "en" ? "हिंदी में देखें / Switch to Hindi" : "Switch to English"
       }
@@ -102,30 +101,30 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // server-side in their layouts, and typing the address changes nothing.
   const navLinks = user
     ? [
-        { href: "/dashboard", label: lang === "hi" ? "डैशबोर्ड" : "Dashboard" },
-        { href: "/preflight", label: lang === "hi" ? "मेरी जाँच" : "My check" },
-        { href: "/documents", label: lang === "hi" ? "दस्तावेज़" : "Documents" },
-        { href: "/adhaar", label: lang === "hi" ? "आधार कार्ड" : "Aadhaar card" },
-        ...(user.role === "employer" || user.role === "admin"
-          ? [{ href: "/employer", label: lang === "hi" ? "पूर्व कर्मचारी" : "Leavers" }]
-          : []),
-        ...(user.role === "admin"
-          ? [{ href: "/governance", label: lang === "hi" ? "नियम प्रशासन" : "Governance" }]
-          : []),
-        { href: "/why", label: lang === "hi" ? "यह बेहतर क्यों है" : "Why this is better" },
-      ]
+      { href: "/dashboard", label: lang === "hi" ? "डैशबोर्ड" : "Dashboard" },
+      { href: "/preflight", label: lang === "hi" ? "मेरी जाँच" : "My check" },
+      { href: "/documents", label: lang === "hi" ? "दस्तावेज़" : "Documents" },
+      { href: "/adhaar", label: lang === "hi" ? "आधार कार्ड" : "Aadhaar card" },
+      ...(user.role === "employer" || user.role === "admin"
+        ? [{ href: "/employer", label: lang === "hi" ? "पूर्व कर्मचारी" : "Leavers" }]
+        : []),
+      ...(user.role === "admin"
+        ? [{ href: "/governance", label: lang === "hi" ? "नियम प्रशासन" : "Governance" }]
+        : []),
+      { href: "/why", label: lang === "hi" ? "यह बेहतर क्यों है" : "Why this is better" },
+    ]
     : [
-        { href: "/story", label: lang === "hi" ? "अनुभव करें" : "Experience" },
-        { href: "/why", label: lang === "hi" ? "यह बेहतर क्यों है" : "Why this is better" },
-        { href: "/documents", label: lang === "hi" ? "दस्तावेज़ मिलान" : "Compare documents" },
-      ];
+      { href: "/story", label: lang === "hi" ? "अनुभव करें" : "Experience" },
+      { href: "/why", label: lang === "hi" ? "यह बेहतर क्यों है" : "Why this is better" },
+      { href: "/documents", label: lang === "hi" ? "दस्तावेज़ मिलान" : "Compare documents" },
+    ];
 
-  const headerClass = isCinematic 
-    ? "bg-black/85 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-black/75 border-white/10" 
+  const headerClass = isCinematic
+    ? "bg-black/85 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-black/75 border-white/10"
     : "bg-paper/80 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-paper/60 border-line/40";
-    
-  const mobileBgClass = isCinematic 
-    ? "bg-black/80 backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-black/70" 
+
+  const mobileBgClass = isCinematic
+    ? "bg-black/80 backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-black/70"
     : "bg-paper/90 backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-paper/70";
 
   return (
@@ -156,9 +155,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   key={link.href}
                   href={link.href}
                   aria-current={pathname === link.href ? "page" : undefined}
-                  className={`whitespace-nowrap text-sm font-medium transition-colors ${
-                    isCinematic ? "text-white/80 hover:text-white" : "text-ink-soft hover:text-ink"
-                  } ${pathname === link.href ? (isCinematic ? 'text-white' : 'text-ink') : ''}`}
+                  className={`whitespace-nowrap text-sm font-medium transition-colors ${isCinematic ? "text-white/80 hover:text-white" : "text-ink-soft hover:text-ink"
+                    } ${pathname === link.href ? (isCinematic ? 'text-white' : 'text-ink') : ''}`}
                 >
                   {link.label}
                 </Link>
@@ -171,9 +169,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <div className="flex shrink-0 items-center gap-2">
                 <Link
                   href="/account"
-                  className={`inline-flex min-h-[40px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-ctl px-3 text-sm font-medium transition-colors ${
-                    isCinematic ? "text-white/85 hover:text-white" : "text-ink-soft hover:text-ink"
-                  }`}
+                  className={`inline-flex min-h-[40px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-ctl px-3 text-sm font-medium transition-colors ${isCinematic ? "text-white/85 hover:text-white" : "text-ink-soft hover:text-ink"
+                    }`}
                 >
                   <User aria-hidden className="size-4" strokeWidth={1.8} />
                   {user.name.split(" ")[0]}
@@ -186,11 +183,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={() => void signOut().then(() => router.push("/"))}
-                  className={`inline-flex min-h-[40px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-ctl border px-3 text-sm font-medium transition-colors ${
-                    isCinematic
+                  className={`inline-flex min-h-[40px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-ctl border px-3 text-sm font-medium transition-colors ${isCinematic
                       ? "border-white/20 text-white hover:bg-white/10"
                       : "border-line-strong text-ink hover:bg-paper-sunk"
-                  }`}
+                    }`}
                 >
                   <LogOut aria-hidden className="size-4" strokeWidth={1.8} />
                   {ui("signOut")}
@@ -200,19 +196,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <div className="flex shrink-0 items-center gap-2">
                 <Link
                   href="/login"
-                  className={`inline-flex min-h-[40px] items-center rounded-ctl px-3 text-sm font-medium transition-colors ${
-                    isCinematic ? "text-white/85 hover:text-white" : "text-ink-soft hover:text-ink"
-                  }`}
+                  className={`inline-flex min-h-[40px] items-center rounded-ctl px-3 text-sm font-medium transition-colors ${isCinematic ? "text-white/85 hover:text-white" : "text-ink-soft hover:text-ink"
+                    }`}
                 >
                   {ui("signIn")}
                 </Link>
                 <Link
                   href="/#start"
-                  className={`inline-flex min-h-[40px] items-center justify-center rounded-ctl px-4 text-sm font-medium transition-transform active:scale-95 ${
-                    isCinematic
+                  className={`inline-flex min-h-[40px] items-center justify-center rounded-ctl px-4 text-sm font-medium transition-transform active:scale-95 ${isCinematic
                       ? "bg-white text-black hover:bg-gray-100"
                       : "bg-indigo-600 text-paper hover:bg-indigo-700"
-                  }`}
+                    }`}
                 >
                   {lang === "hi" ? "दावा जाँचें" : "Check a claim"}
                 </Link>
@@ -226,9 +220,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <ThemeToggle isDark={isCinematic} />
             <button
               type="button"
-              className={`-mr-1.5 inline-flex size-11 shrink-0 items-center justify-center rounded-md transition-colors ${
-                isCinematic ? "text-white hover:bg-white/10" : "text-ink hover:bg-paper-sunk"
-              }`}
+              className={`-mr-1.5 inline-flex size-11 shrink-0 items-center justify-center rounded-md transition-colors ${isCinematic ? "text-white hover:bg-white/10" : "text-ink hover:bg-paper-sunk"
+                }`}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-nav"
@@ -243,73 +236,97 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
+        {/* Mobile Menu Overlay */}
+        {mobileMenuOpen && (
+          <div id="mobile-nav" className={`absolute inset-x-0 top-full z-30 flex max-h-[calc(100dvh-4rem)] flex-col overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 xl:hidden ${mobileBgClass}`}>
+            <nav aria-label={lang === "hi" ? "मुख्य मेन्यू" : "Main menu"} className="flex flex-col gap-4 text-lg">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={pathname === link.href ? "page" : undefined}
+                  className={`block py-3 font-medium border-b ${isCinematic ? "border-white/10 text-white/90" : "border-line text-ink"
+                    }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              {user ? (
+                <>
+                  <Link
+                    href="/account"
+                    className={`block py-3 font-medium border-b ${isCinematic ? "border-white/10 text-white/90" : "border-line text-ink"
+                      }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {ui("account")} · {user.name.split(" ")[0]}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      void signOut().then(() => router.push("/"));
+                    }}
+                    className={`mt-4 flex w-full min-h-[48px] items-center justify-center rounded-ctl border px-4 text-base font-medium ${isCinematic ? "border-white/25 text-white" : "border-line-strong text-ink"
+                      }`}
+                  >
+                    {ui("signOut")}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className={`block py-3 font-medium border-b ${isCinematic ? "border-white/10 text-white/90" : "border-line text-ink"
+                      }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {ui("signIn")}
+                  </Link>
+                  <Link
+                    href="/#start"
+                    className={`mt-4 flex w-full min-h-[48px] items-center justify-center rounded-ctl px-4 text-base font-medium transition-transform active:scale-95 ${isCinematic ? "bg-white text-black" : "bg-indigo-600 text-paper"
+                      }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {lang === "hi" ? "दावा जाँचें" : "Check a claim"}
+                  </Link>
+                </>
+              )}
+            </nav>
+          </div>
+        )}
+      </header>
+
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
-        <div id="mobile-nav" className={`absolute inset-x-0 top-full z-30 flex max-h-[calc(100dvh-4rem)] flex-col overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 xl:hidden ${mobileBgClass}`}>
-          <nav aria-label={lang === "hi" ? "मुख्य मेन्यू" : "Main menu"} className="flex flex-col gap-4 text-lg">
+        <div className={`fixed inset-0 z-30 top-16 flex flex-col px-4 py-6 md:hidden overflow-y-auto ${mobileBgClass}`}>
+          <nav className="flex flex-col gap-4 text-lg">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                aria-current={pathname === link.href ? "page" : undefined}
-                className={`block py-3 font-medium border-b ${
-                  isCinematic ? "border-white/10 text-white/90" : "border-line text-ink"
-                }`}
+                className={`block py-3 font-medium border-b ${isCinematic ? "border-white/10 text-white/90" : "border-line text-ink"
+                  }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {link.label}
               </Link>
             ))}
-            {user ? (
-              <>
-                <Link
-                  href="/account"
-                  className={`block py-3 font-medium border-b ${
-                    isCinematic ? "border-white/10 text-white/90" : "border-line text-ink"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  {ui("account")} · {user.name.split(" ")[0]}
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    void signOut().then(() => router.push("/"));
-                  }}
-                  className={`mt-4 flex w-full min-h-[48px] items-center justify-center rounded-ctl border px-4 text-base font-medium ${
-                    isCinematic ? "border-white/25 text-white" : "border-line-strong text-ink"
-                  }`}
-                >
-                  {ui("signOut")}
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className={`block py-3 font-medium border-b ${
-                    isCinematic ? "border-white/10 text-white/90" : "border-line text-ink"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  {ui("signIn")}
-                </Link>
-                <Link
-                  href="/#start"
-                  className={`mt-4 flex w-full min-h-[48px] items-center justify-center rounded-ctl px-4 text-base font-medium transition-transform active:scale-95 ${
-                    isCinematic ? "bg-white text-black" : "bg-indigo-600 text-paper"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  {lang === "hi" ? "दावा जाँचें" : "Check a claim"}
-                </Link>
-              </>
-            )}
+            <Link
+              href="/#start"
+              className={`mt-4 flex w-full min-h-[48px] items-center justify-center rounded-ctl px-4 text-base font-medium transition-transform active:scale-95 ${isCinematic
+                  ? "bg-white text-black"
+                  : "bg-indigo-600 text-paper"
+                }`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {lang === "hi" ? "दावा जाँचें" : "Check a claim"}
+            </Link>
           </nav>
         </div>
       )}
-      </header>
 
       <main id="main" className="flex-1">
         {children}
