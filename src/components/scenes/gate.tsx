@@ -47,17 +47,36 @@ function token(el: Element, name: string, fallback: string) {
   return getComputedStyle(el).getPropertyValue(name).trim() || fallback;
 }
 
+/**
+ * Four getComputedStyle calls per draw is four style recalcs per frame. The
+ * night palette never changes, so read it once and hold it.
+ */
+function palette(cv: HTMLCanvasElement) {
+  return {
+    pass: token(cv, "--color-clear-300", "#a7d9c2"),
+    fail: token(cv, "--color-blocked-300", "#e3a184"),
+    unjudged: token(cv, "--color-night-edge", "#6b7180"),
+    rule: token(cv, "--color-night-line", "#454b58"),
+  };
+}
+
+/**
+ * Marks travel roughly 1.6 screen widths across the full scrub, so 600 steps
+ * is finer than two device pixels per step — below what anyone can see, and
+ * it collapses the redundant redraws of a slow scroll into nothing.
+ */
+const STEPS = 600;
+
 export function Gate() {
   const { t } = useLang();
   const sceneRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  const inks = useRef<ReturnType<typeof palette> | null>(null);
+
   const render = useCanvas(canvasRef, (ctx, w, h, p: number) => {
     const cv = ctx.canvas;
-    const pass = token(cv, "--color-clear-300", "#a7d9c2");
-    const fail = token(cv, "--color-blocked-300", "#e3a184");
-    const unjudged = token(cv, "--color-night-edge", "#6b7180");
-    const rule = token(cv, "--color-night-line", "#454b58");
+    const { pass, fail, unjudged, rule } = (inks.current ??= palette(cv));
 
     const gateX = w * 0.52;
     const laneH = h / (LANES + 1);
@@ -118,7 +137,9 @@ export function Gate() {
     ctx.globalAlpha = 1;
   }, 0);
 
-  useSceneProgress(sceneRef, { onFrame: render });
+  useSceneProgress(sceneRef, {
+    onFrame: (p) => render(Math.round(p * STEPS) / STEPS),
+  });
 
   return (
     <section ref={sceneRef} className="night bleed py-20 sm:py-28">
