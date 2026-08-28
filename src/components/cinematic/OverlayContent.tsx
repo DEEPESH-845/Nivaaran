@@ -29,7 +29,7 @@ export function OverlayContent({ scrollContainerRef }: OverlayContentProps) {
     // Set initial states
     const elements = [introRef, beat1Ref, transitionRef, revealRef, detailRef, finalRef];
     elements.forEach(ref => {
-      if (ref.current) gsap.set(ref.current, { opacity: 0, y: 30 });
+      if (ref.current) gsap.set(ref.current, { opacity: 0, y: 50 });
     });
 
     const tl = gsap.timeline({
@@ -37,7 +37,7 @@ export function OverlayContent({ scrollContainerRef }: OverlayContentProps) {
         trigger: scrollContainerRef.current,
         start: "top top",
         end: "+=800%", // Must match FrameRenderer's end value
-        scrub: 0.5,    // Aligned with FrameRenderer's scrub value
+        scrub: 1.2,    // Aligned with FrameRenderer's scrub value
         // No pinning here, FrameRenderer or CinematicSequence handles the pin.
       }
     });
@@ -47,27 +47,27 @@ export function OverlayContent({ scrollContainerRef }: OverlayContentProps) {
     // So 0-15s is 0-15%.
 
     // 0-15% -> Introduction
-    tl.to(introRef.current, { opacity: 1, y: 0, duration: 3 }, 2) // In at 2%
-      .to(introRef.current, { opacity: 0, y: -30, duration: 3 }, 12); // Out at 12%
+    tl.to(introRef.current, { opacity: 1, y: 0, duration: 3, ease: "none" }, 2) // In at 2%
+      .to(introRef.current, { opacity: 0, y: -50, duration: 3, ease: "none" }, 12); // Out at 12%
 
     // 15-35% -> First beat
-    tl.to(beat1Ref.current, { opacity: 1, y: 0, duration: 3 }, 17)
-      .to(beat1Ref.current, { opacity: 0, y: -30, duration: 3 }, 32);
+    tl.to(beat1Ref.current, { opacity: 1, y: 0, duration: 3, ease: "none" }, 17)
+      .to(beat1Ref.current, { opacity: 0, y: -50, duration: 3, ease: "none" }, 32);
 
     // 35-55% -> Transition
-    tl.to(transitionRef.current, { opacity: 1, y: 0, duration: 3 }, 37)
-      .to(transitionRef.current, { opacity: 0, y: -30, duration: 3 }, 52);
+    tl.to(transitionRef.current, { opacity: 1, y: 0, duration: 3, ease: "none" }, 37)
+      .to(transitionRef.current, { opacity: 0, y: -50, duration: 3, ease: "none" }, 52);
 
     // 55-75% -> Primary reveal
-    tl.to(revealRef.current, { opacity: 1, y: 0, duration: 3 }, 57)
-      .to(revealRef.current, { opacity: 0, y: -30, duration: 3 }, 72);
+    tl.to(revealRef.current, { opacity: 1, y: 0, duration: 3, ease: "none" }, 57)
+      .to(revealRef.current, { opacity: 0, y: -50, duration: 3, ease: "none" }, 72);
 
     // 75-90% -> Detail
-    tl.to(detailRef.current, { opacity: 1, y: 0, duration: 3 }, 77)
-      .to(detailRef.current, { opacity: 0, y: -30, duration: 3 }, 87);
+    tl.to(detailRef.current, { opacity: 1, y: 0, duration: 3, ease: "none" }, 77)
+      .to(detailRef.current, { opacity: 0, y: -50, duration: 3, ease: "none" }, 87);
 
     // 90-100% -> Final state
-    tl.to(finalRef.current, { opacity: 1, y: 0, duration: 3 }, 92);
+    tl.to(finalRef.current, { opacity: 1, y: 0, duration: 3, ease: "none" }, 92);
     // Stays visible at the end
 
     // Ensure total timeline duration is exactly 100 so absolute times match percentages

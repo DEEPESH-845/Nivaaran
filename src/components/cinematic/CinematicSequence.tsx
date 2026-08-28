@@ -10,11 +10,6 @@ export function CinematicSequence() {
 
   return (
     <div className="relative w-full bg-black">
-      {/* Navigation Overlay */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center p-6 mix-blend-difference text-white pointer-events-none font-medium text-sm tracking-widest uppercase">
-        <span>Nivaaran</span>
-        <span>The Journey</span>
-      </div>
 
       {/* 
         This is the trigger container for ScrollTrigger. 
