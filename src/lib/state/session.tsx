@@ -43,6 +43,13 @@ export interface SessionState {
   preflightAt?: string;
   claim?: { ref: string; filedAt: string; amount: number; state: ClaimState; stage: number };
   startedAt?: string;
+  /**
+   * The current records were filled by reading a document rather than typed.
+   * Screens downstream of /documents say so, because a value that appears in a
+   * field nobody typed into needs to explain itself. Any later edit clears it,
+   * which is why it is set from the same `from` the activity feed already uses.
+   */
+  filledFromDocument?: boolean;
 }
 
 const EMPTY: SessionState = { resolved: [] };
@@ -186,7 +193,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         mirror({ action: "start", personaId, facts });
       },
       setFacts: (facts, from) => {
-        commit({ ...session, facts });
+        commit({ ...session, facts, filledFromDocument: from === "documents" || undefined });
         mirror({ action: "facts", facts, from });
       },
       markPreflightRun: () => {

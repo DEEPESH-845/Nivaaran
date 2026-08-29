@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import clsx from "clsx";
 import { dotMatrix, groupAadhaar, initials, maskAadhaar, seededPalette } from "@/lib/adhaar/specimen";
+import { formatDate } from "@/lib/date";
 import { useLang } from "@/lib/i18n/context";
 import type { Bi } from "@/lib/rules/types";
 
@@ -76,7 +77,7 @@ function Edges() {
         <div
           key={d}
           aria-hidden
-          className="absolute inset-0 rounded-[1rem] bg-night"
+          className="absolute inset-0 rounded-lg bg-night"
           style={{ transform: `translateZ(-${d}px)`, filter: `brightness(${1 - d * 0.14})` }}
         />
       ))}
@@ -119,7 +120,7 @@ export function SpecimenCard({
       {/* ------------------------------------------------------------ front */}
       <div
         aria-hidden={face === "back"}
-        className="absolute inset-0 rounded-[1rem] border border-night-line bg-night"
+        className="absolute inset-0 rounded-lg border border-night-line bg-night shadow-card-object"
         style={{ transformStyle: "preserve-3d", backfaceVisibility: "hidden" }}
       >
         <Edges />
@@ -127,7 +128,7 @@ export function SpecimenCard({
         {/* z0 — the body. A quiet ground so every layer above it reads. */}
         <div
           aria-hidden
-          className="absolute inset-0 rounded-[1rem] bg-linear-to-br from-night-rise to-night"
+          className="absolute inset-0 rounded-lg bg-linear-to-br from-night-rise to-night"
           style={{ transform: "translateZ(0px)" }}
         />
 
@@ -162,7 +163,7 @@ export function SpecimenCard({
             <span data-testid="card-name">{details.name || t(COPY.unset)}</span>
           </p>
           <div className="mt-2 flex flex-wrap items-end gap-x-5 gap-y-1.5">
-            <Row label={t(COPY.dob)} value={details.dob || t(COPY.unset)} />
+            <Row label={t(COPY.dob)} value={formatDate(details.dob) || t(COPY.unset)} />
             {details.gender ? <Row label={t(COPY.gender)} value={details.gender} /> : null}
           </div>
           <p className="mt-2.5 text-[0.5rem] font-semibold uppercase tracking-[0.14em] text-night-faint">
@@ -176,17 +177,21 @@ export function SpecimenCard({
           </p>
         </div>
 
-        {/* z40 — holographic foil. Hue follows the tilt the stage writes. */}
+        {/* z40 — holographic foil, fixed. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-[1rem]"
+          className="pointer-events-none absolute inset-0 rounded-lg"
           style={{
             // No blend mode: in a real preserve-3d scene each layer composites
             // on its own, so `overlay` had the page behind it rather than the
             // card and painted the whole face black.
+            //
+            // And no filter. The hue used to rotate with the tilt, which meant
+            // a full-card `filter` repaint on every pointer frame — the one
+            // thing on this page that was not compositable. The sheen reads the
+            // same at rest and the tilt now costs a transform and nothing else.
             transform: flush(6),
-            opacity: 0.28,
-            filter: "hue-rotate(calc(var(--tilt-y, 0) * 4deg)) saturate(1.3)",
+            opacity: 0.22,
             background:
               "conic-gradient(from 210deg at 78% 26%, #6ee7ff, #a78bfa, #f0abfc, #fde68a, #6ee7ff)",
             maskImage: "radial-gradient(95% 75% at 88% 16%, #000 0%, transparent 68%)",
@@ -206,7 +211,7 @@ export function SpecimenCard({
             stage through --spec-x / --spec-y. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-[1rem]"
+          className="pointer-events-none absolute inset-0 rounded-lg"
           style={{
             transform: flush(32),
             background:
@@ -218,7 +223,7 @@ export function SpecimenCard({
       {/* ------------------------------------------------------------- back */}
       <div
         aria-hidden={face === "front"}
-        className="absolute inset-0 rounded-[1rem] border border-night-line bg-night p-4 sm:p-5"
+        className="absolute inset-0 rounded-lg border border-night-line bg-night p-4 sm:p-5 shadow-card-object"
         style={{
           transform: "rotateY(180deg)",
           transformStyle: "preserve-3d",

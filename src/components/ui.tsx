@@ -91,6 +91,40 @@ export function Card({
   );
 }
 
+/* ---------------------------------------------------------- ActionFooter */
+
+/**
+ * An action and the sentence that explains it.
+ *
+ * The naive spelling of this row — `flex flex-wrap` with the text as
+ * `flex-1` — is a trap. `flex-1` is `flex-basis: 0`, so the paragraph never
+ * counts towards the line's width and `flex-wrap` never fires: instead of
+ * moving under the button it shrinks in place, and with `min-w-0` it will
+ * shrink past its longest word into a one-character-per-line strip. Measured
+ * at 412px it collapsed to 13px wide and 169px tall.
+ *
+ * The basis is what fixes it. The text asks for 16rem, so the flex line
+ * breaks when 16rem will not fit beside the action, and the text takes the
+ * next row whole. Below `sm` the action goes full-width and the two always
+ * stack. The caller owns the typography inside; this owns only the geometry.
+ */
+export function ActionFooter({
+  action,
+  children,
+  className,
+}: {
+  action: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={clsx("flex flex-wrap items-center gap-x-4 gap-y-3", className)}>
+      <div className="w-full sm:w-auto [&>*]:w-full sm:[&>*]:w-auto">{action}</div>
+      <div className="min-w-0 flex-1 basis-64">{children}</div>
+    </div>
+  );
+}
+
 /* ----------------------------------------------------------------- Badge */
 
 export type Tone = "neutral" | "indigo" | "blocked" | "caution" | "clear";
