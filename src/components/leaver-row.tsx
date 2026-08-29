@@ -1,7 +1,7 @@
 "use client";
 
 import { Clock, ExternalLink, MessageSquare, User } from "lucide-react";
-import { Badge, Button, Card, Disclosure, SectionLabel } from "@/components/ui";
+import { ActionFooter, Badge, Button, Card, Disclosure, SectionLabel } from "@/components/ui";
 import { SourceChip } from "@/components/finding-card";
 import type { LeaverReview } from "@/lib/rules/roster";
 import type { Finding, Fix } from "@/lib/rules/types";
@@ -134,20 +134,23 @@ export function LeaverRow({
                   ) : null}
 
                   {onFixed ? (
-                    <div className="border-t border-line pt-3">
-                      <Button
-                        tone="secondary"
-                        full
-                        onClick={() => onFixed(action.findings.map((f) => f.ruleId))}
-                      >
-                        {lang === "hi" ? "यह हो गया — दोबारा जाँचें" : "I've filed this — re-check"}
-                      </Button>
-                      <p className="mt-2 text-2xs leading-relaxed text-ink-faint">
+                    <ActionFooter
+                      className="border-t border-line pt-3"
+                      action={
+                        <Button
+                          tone="secondary"
+                          onClick={() => onFixed(action.findings.map((f) => f.ruleId))}
+                        >
+                          {lang === "hi" ? "यह हो गया — दोबारा जाँचें" : "I've filed this — re-check"}
+                        </Button>
+                      }
+                    >
+                      <p className="text-2xs leading-relaxed text-ink-faint">
                         {lang === "hi"
                           ? "प्रदर्शन के लिए: यह मान लेता है कि बदलाव EPFO में दर्ज हो गया, ताकि आप जाँच दोबारा चलती देख सकें।"
                           : "For the demo: this assumes the change has landed in EPFO so you can watch the check re-run."}
                       </p>
-                    </div>
+                    </ActionFooter>
                   ) : null}
 
                   <SourceChip sourceId={action.findings[0].sourceId} />

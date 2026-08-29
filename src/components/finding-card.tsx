@@ -15,9 +15,10 @@ import {
   User,
 } from "lucide-react";
 import Link from "next/link";
-import { Badge, Button, Card, Disclosure, type Tone } from "@/components/ui";
+import { ActionFooter, Badge, Button, Card, Disclosure, type Tone } from "@/components/ui";
 import { NameDiff, ValueDiff } from "@/components/name-diff";
 import { ExplainSimply } from "@/components/explain-simply";
+import { formatDate } from "@/lib/date";
 import { SOURCES } from "@/lib/rules/sources";
 import type { Confidence, Finding, Owner, Severity } from "@/lib/rules/types";
 import { EmployerHandoff } from "@/components/employer-handoff";
@@ -49,7 +50,19 @@ const CONF_TONE: Record<Confidence, Tone> = {
 };
 
 /** Every rule shows where it came from, when we checked, and how sure we are. */
-export function SourceChip({ sourceId }: { sourceId: string }) {
+export function SourceChip({
+  sourceId,
+  className,
+}: {
+  sourceId: string;
+  /**
+   * The chip sits in a full-width card on /preflight, where a hairline above
+   * it separates the citation from the finding — and inline in a metadata row
+   * on /dashboard, where that same hairline rendered as an orphan rule
+   * floating over nothing. The separator belongs to the caller's layout.
+   */
+  className?: string;
+}) {
   const { lang, ui } = useLang();
   const src = SOURCES[sourceId];
   if (!src) return null;
@@ -68,7 +81,7 @@ export function SourceChip({ sourceId }: { sourceId: string }) {
           <Badge tone={CONF_TONE[src.confidence]}>{confLabel[lang]}</Badge>
         </span>
       }
-      className="border-t border-line-soft pt-1"
+      className={className}
     >
       <div className="space-y-1.5">
         <p className="text-sm text-ink">{src.title}</p>
@@ -101,12 +114,15 @@ function Evidence({ finding }: { finding: Finding }) {
     return <NameDiff verdict={e.verdict} leftLabel={t(e.aLabel)} rightLabel={t(e.bLabel)} />;
   }
   if (e.type === "date" || e.type === "value") {
+    // A date is shown the way it is shown everywhere else. The evidence and
+    // the card and the table must not disagree about what a date looks like.
+    const show = e.type === "date" ? formatDate : (v: string) => v;
     return (
       <ValueDiff
         leftLabel={t(e.aLabel)}
         rightLabel={t(e.bLabel)}
-        left={e.a}
-        right={e.b}
+        left={show(e.a)}
+        right={show(e.b)}
       />
     );
   }
@@ -259,24 +275,28 @@ export function FindingCard({
                 ) : null}
 
                 {onFixed && !fixed ? (
-                  <div className="border-t border-line pt-3 print:hidden">
-                    <Button tone="secondary" onClick={onFixed} full>
-                      {lang === "hi"
-                        ? "मैंने यह कर लिया — दोबारा जाँचें"
-                        : "I've done this — re-check"}
-                    </Button>
-                    <p className="mt-2 text-2xs leading-relaxed text-ink-faint">
+                  <ActionFooter
+                    className="border-t border-line pt-3 print:hidden"
+                    action={
+                      <Button tone="secondary" onClick={onFixed}>
+                        {lang === "hi"
+                          ? "मैंने यह कर लिया — दोबारा जाँचें"
+                          : "I've done this — re-check"}
+                      </Button>
+                    }
+                  >
+                    <p className="text-2xs leading-relaxed text-ink-faint">
                       {lang === "hi"
                         ? "प्रदर्शन के लिए: यह मान लेता है कि सुधार EPFO में दर्ज हो गया, ताकि आप जाँच दोबारा चलती देख सकें।"
                         : "For the demo: this assumes the correction has landed in EPFO so you can watch the check re-run."}
                     </p>
-                  </div>
+                  </ActionFooter>
                 ) : null}
             </div>
           </div>
         ) : null}
 
-        <SourceChip sourceId={finding.sourceId} />
+        <SourceChip sourceId={finding.sourceId} className="border-t border-line-soft pt-1" />
       </div>
     </Card>
   );

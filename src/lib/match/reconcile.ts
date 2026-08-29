@@ -95,6 +95,12 @@ const FIELDS: {
   },
 ];
 
+/** The one place a field is named, so a screen never invents a second label. */
+export const FIELD_LABELS = Object.fromEntries(FIELDS.map((f) => [f.field, f.label])) as Record<
+  FieldId,
+  Bi
+>;
+
 /** What a document reading can carry. Every field optional: slots read alone. */
 export interface DocumentValues {
   name?: string | null;
