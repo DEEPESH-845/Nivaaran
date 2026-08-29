@@ -66,7 +66,7 @@ async function intoOpenReader(page: Page) {
   }
   await page.getByRole("link", { name: /Read these from your documents instead/i }).click();
   await page.getByRole("button", { name: /Bank passbook — Rajesh/i }).click();
-  await expect(page.getByRole("button", { name: /Use these values/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Use these and re-run my check/i })).toBeVisible();
 }
 
 /** Sign in, so an authenticated page can be scanned as itself. */
@@ -176,7 +176,7 @@ test("the document pre-check is operable by keyboard, file input included", asyn
   const file = page.locator("#document-file-identity");
   await file.focus();
   await expect(file).toBeFocused();
-  await expect(page.getByText(/Choose a file/i)).toBeVisible();
+  await expect(page.getByText(/Use my own photo/i)).toBeVisible();
 });
 
 test("every document pre-check control meets the 44px minimum on mobile", async ({ page }) => {

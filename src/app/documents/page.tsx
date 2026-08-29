@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, Info, X } from "lucide-react";
-import { Badge, Button, ButtonLink, Callout, Card, Choice, Divider, SectionLabel } from "@/components/ui";
+import { Badge, Button, Callout, Card, Choice, Divider, SectionLabel } from "@/components/ui";
 import { DocumentSlot, type SlotKind, type SlotReading } from "@/components/document-slot";
 import { PERSONAS } from "@/content/personas";
 import {
@@ -61,12 +61,21 @@ const COPY = {
   bankLabel: { en: "Bank passbook", hi: "बैंक पासबुक" },
   tableTitle: { en: "What we read, against what EPFO has", hi: "जो पढ़ा गया, बनाम EPFO के पास जो है" },
   nothingRead: {
-    en: "Read a document above and the comparison appears here.",
-    hi: "ऊपर कोई दस्तावेज़ पढ़वाएँ, तुलना यहीं दिखेगी।",
+    en: "Read a document above and the comparison appears here. If reading does not work, type the values in yourself — the comparison is the same either way.",
+    hi: "ऊपर कोई दस्तावेज़ पढ़वाएँ, तुलना यहीं दिखेगी। अगर पढ़ना काम न करे, तो मान ख़ुद भर दें — तुलना दोनों तरह से वही रहती है।",
   },
-  agrees: { en: "Agrees", hi: "मेल खाता है" },
+  typeInstead: { en: "Type the values in instead", hi: "मान ख़ुद भरें" },
+  missingBank: {
+    en: "The passbook carries the other two — the IFSC and the last four digits.",
+    hi: "बाक़ी दो पासबुक में हैं — IFSC और खाते के आख़िरी चार अंक।",
+  },
+  missingIdentity: {
+    en: "An identity document carries the other two — the name and the date of birth.",
+    hi: "बाक़ी दो पहचान दस्तावेज़ में हैं — नाम और जन्मतिथि।",
+  },
+  agrees: { en: "Matches", hi: "मेल खाता है" },
   differs: { en: "Will stop your claim", hi: "दावा रोक देगा" },
-  differsNoRule: { en: "Worth knowing", hi: "जानना ज़रूरी" },
+  differsNoRule: { en: "Won't stop your claim", hi: "दावा नहीं रोकेगा" },
   notRead: { en: "Not read yet", hi: "अभी पढ़ा नहीं" },
   disagree: {
     en: "Your two documents disagree with each other here. EPFO does not compare them, so this will not reject the claim — but it matters if you correct the wrong one.",
@@ -80,12 +89,7 @@ const COPY = {
     en: "Every value is editable. Reading a photograph is not perfect — correct anything that is wrong before you use it.",
     hi: "हर मान बदला जा सकता है। तस्वीर से पढ़ना पूरी तरह सही नहीं होता — इस्तेमाल से पहले जो ग़लत हो सुधार लें।",
   },
-  use: { en: "Use these values", hi: "ये मान इस्तेमाल करें" },
-  used: {
-    en: "Used. Your record now holds what we read.",
-    hi: "इस्तेमाल हो गया। आपके रिकॉर्ड में अब वही है जो पढ़ा गया।",
-  },
-  seeVerdict: { en: "See what this changes", hi: "देखें इससे क्या बदला" },
+  use: { en: "Use these and re-run my check", hi: "इन्हें लेकर जाँच दोबारा चलाएँ" },
   backToCheck: { en: "Back to the check", hi: "जाँच पर वापस" },
 } as const satisfies Record<string, Bi>;
 
@@ -179,7 +183,13 @@ export default function DocumentsPage() {
     identity: {},
     bank: {},
   });
-  const [used, setUsed] = useState(false);
+  // Manual entry is revealed on request rather than shown by default: this is
+  // a comparison, not a form, and four empty inputs would say otherwise. It is
+  // also the only path left when the reader fails, which the slot promises.
+  const [typing, setTyping] = useState(false);
+  // Bumped on every successful reading, to move the reader to the answer.
+  const [reads, setReads] = useState(0);
+  const comparisonRef = useRef<HTMLHeadingElement>(null);
 
   const facts = session.facts;
   const rows = useMemo(
@@ -188,17 +198,35 @@ export default function DocumentsPage() {
   );
 
   function onRead(kind: SlotKind, reading: SlotReading | null) {
-    setUsed(false);
     setValues((prev) => ({ ...prev, [kind]: reading?.fields ?? {} }));
+    if (reading) setReads((n) => n + 1);
   }
 
   function edit(kind: SlotKind, field: keyof DocumentValues, v: string) {
-    setUsed(false);
     setValues((prev) => ({ ...prev, [kind]: { ...prev[kind], [field]: v } }));
   }
 
+  // The answer renders below the fold, and nothing used to point at it: the
+  // slot showed a badge and the comparison the reader came for sat off-screen.
+  useEffect(() => {
+    if (reads === 0) return;
+    const heading = comparisonRef.current;
+    if (!heading) return;
+    heading.focus();
+    // Instant, not smooth: Lenis owns the scroll position here and resyncs to
+    // a jump. Two smooth animations for one movement is the drift the
+    // scroll provider exists to prevent.
+    heading.scrollIntoView({ block: "start" });
+  }, [reads]);
+
   const read = readRows(rows);
   const blocking = blockingRows(rows);
+  const hasIdentity = Object.values(values.identity).some(Boolean);
+  const hasBank = Object.values(values.bank).some(Boolean);
+  // Name the document still missing rather than counting to two: "the passbook
+  // carries the IFSC" tells you why to bother, "1 of 2" does not.
+  const missing =
+    hasIdentity && !hasBank ? COPY.missingBank : hasBank && !hasIdentity ? COPY.missingIdentity : null;
 
   /* -------------------------------------------------- No record to compare */
   if (ready && !facts) {
@@ -254,27 +282,44 @@ export default function DocumentsPage() {
         </Card>
       </section>
 
+      {missing ? (
+        <p className="-mt-4 text-sm leading-relaxed text-ink-mute">{t(missing)}</p>
+      ) : null}
+
       {/* ------------------------------------------------------------ Table */}
       <section aria-labelledby="comparison" className="space-y-3">
-        <h2 id="comparison" className="text-lg font-semibold tracking-[-0.01em] text-ink">
+        <h2
+          id="comparison"
+          ref={comparisonRef}
+          tabIndex={-1}
+          className="scroll-mt-24 text-lg font-semibold tracking-[-0.01em] text-ink outline-none"
+        >
           {t(COPY.tableTitle)}
         </h2>
 
-        {read.length === 0 ? (
-          <p className="rounded-card bg-paper-sunk p-4 text-sm leading-relaxed text-ink-soft">
-            {t(COPY.nothingRead)}
-          </p>
+        {read.length === 0 && !typing ? (
+          <div className="space-y-3 rounded-card bg-paper-sunk p-4">
+            <p className="text-sm leading-relaxed text-ink-soft">{t(COPY.nothingRead)}</p>
+            <Button tone="secondary" onClick={() => setTyping(true)}>
+              {t(COPY.typeInstead)}
+            </Button>
+          </div>
         ) : (
           <>
-            <p aria-live="polite" className="text-md leading-relaxed text-ink">
-              {blocking.length === 0
-                ? lang === "hi"
-                  ? "जो पढ़ा गया, उसमें से कोई भी चीज़ दावा नहीं रोकेगी।"
-                  : "Nothing we read will stop your claim."
-                : lang === "hi"
-                  ? `${blocking.length} ${blocking.length === 1 ? "जानकारी" : "जानकारियाँ"} आपका दावा रोक देंगी।`
-                  : `${blocking.length} of these will stop your claim.`}
-            </p>
+            {read.length > 0 ? (
+              <p aria-live="polite" className="text-md leading-relaxed text-ink">
+                {lang === "hi"
+                  ? `चार में से ${read.length} जानकारियाँ मिलाई गईं। `
+                  : `${read.length} of the four fields compared. `}
+                {blocking.length === 0
+                  ? lang === "hi"
+                    ? "इनमें से कोई भी दावा नहीं रोकेगी।"
+                    : "Nothing here will stop your claim."
+                  : lang === "hi"
+                    ? `${blocking.length} आपका दावा रोक देंगी।`
+                    : `${blocking.length} will stop your claim.`}
+              </p>
+            ) : null}
 
             <ul className="space-y-3">
               {rows.map((row) => (
@@ -347,26 +392,17 @@ export default function DocumentsPage() {
             <Button
               onClick={() => {
                 setFacts(merge(facts, values.identity, values.bank), "documents");
-                setUsed(true);
+                router.push("/preflight");
               }}
             >
               {t(COPY.use)}
+              <ArrowRight aria-hidden className="size-4" strokeWidth={1.8} />
             </Button>
           ) : null}
           <Button tone="secondary" onClick={() => router.push("/check?q=5")}>
             {t(COPY.backToCheck)}
           </Button>
         </div>
-
-        {used ? (
-          <div className="space-y-3 rounded-card border border-clear-100 bg-clear-50 p-4">
-            <p className="text-sm leading-relaxed text-clear-700">{t(COPY.used)}</p>
-            <ButtonLink href="/preflight">
-              {t(COPY.seeVerdict)}
-              <ArrowRight aria-hidden className="size-4" strokeWidth={1.8} />
-            </ButtonLink>
-          </div>
-        ) : null}
       </section>
     </div>
   );
