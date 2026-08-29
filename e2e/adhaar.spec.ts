@@ -3,11 +3,11 @@ import { expect, test, type Page } from "@playwright/test";
 /**
  * The specimen card.
  *
- * Three of these tests are not about the card at all — they are about the two
+ * Two of these tests are not about the card at all — they are about the two
  * promises the card makes. That a number typed into it never leaves the
- * browser (AGENTS.md rule 13), and that the WebGL studio is an upgrade rather
- * than a requirement (rule 14). Both are the kind of claim that quietly stops
- * being true, so both are asserted rather than documented.
+ * browser (AGENTS.md rule 13), and that nothing is rendered behind it: no
+ * canvas, no WebGL, no lit room (rule 14). Both are the kind of claim that
+ * quietly stops being true, so both are asserted rather than documented.
  */
 
 const STAGE = { name: /Specimen Aadhaar card/i };
@@ -77,41 +77,25 @@ test.describe("the specimen card", () => {
     expect(stored).not.toContain("234567890123");
   });
 
-  test("everything works with the three.js chunk blocked", async ({ page }) => {
-    // Matching the chunk by name does not work — Next hashes it, and a
-    // /three/ URL filter silently matches nothing, which is a test that
-    // passes without testing. Identify it by what is actually inside it.
-    let blocked = 0;
-    await page.route("**/_next/static/chunks/**.js", async (route) => {
-      const response = await route.fetch();
-      const body = await response.text();
-      if (body.includes("WebGLRenderer")) {
-        blocked++;
-        return route.abort();
-      }
-      return route.fulfill({ response, body });
-    });
-
+  test("there is nothing painted behind the card", async ({ page }) => {
+    // The card is the subject of this page. A studio used to sit behind it —
+    // a canvas holding a WebGL context, a cast shadow and drifting motes on a
+    // ticker — and it is gone. Give it longer than the old loader's idle
+    // callback took, so a reintroduction cannot slip past by being late.
     await intoAdhaar(page);
-
-    await page.getByLabel(/^Name$/).fill("Rajesh K Sharma");
-    await expect(page.getByTestId("card-name")).toHaveText("Rajesh K Sharma");
+    await page.waitForTimeout(2500);
+    await expect(page.locator("canvas")).toHaveCount(0);
 
     const stage = page.getByRole("group", STAGE);
     await stage.focus();
     await stage.press("Enter");
     await expect(stage).toHaveAttribute("data-face", "back");
-
-    await page.waitForTimeout(2500);
-    expect(blocked, "the three.js chunk was never actually blocked").toBeGreaterThan(0);
-    await expect(page.locator("canvas")).toHaveCount(0);
   });
 
-  test("three.js is not in the page's first load", async ({ request }) => {
-    // Timing how long the studio takes to arrive is a race on a fast machine.
-    // This asserts the durable half of AGENTS.md rule 14 instead: whatever the
-    // scheduling, three.js must not be among the scripts the page pulls in to
-    // become interactive. Turning the dynamic import into a static one fails
+  test("no renderer ships to this page at all", async ({ request }) => {
+    // The studio was removed rather than deferred, so the assertion is no
+    // longer about first load — it is that three.js is not in any script this
+    // page pulls, ever. Reintroducing it, statically or dynamically, fails
     // here immediately.
     const html = await (await request.get("/adhaar")).text();
     const scripts = [
@@ -140,7 +124,7 @@ test.describe("the specimen card", () => {
     await expect(page.getByText(/encodes nothing and scans as nothing/i)).toBeVisible();
   });
 
-  test("reduced motion shows every detail, and no studio at all", async ({ page }) => {
+  test("reduced motion shows every detail, and moves nothing", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await intoAdhaar(page);
     await page.getByLabel(/^Name$/).fill("Rajesh K Sharma");
@@ -221,56 +205,6 @@ test.describe("the specimen card", () => {
     await expect(
       page.getByRole("heading", { name: /Whose card are we building/i }),
     ).toBeVisible();
-  });
-
-  test("the enhanced view can be refused, and stays refused", async ({ page }) => {
-    await intoAdhaar(page);
-    await expect(page.locator("canvas")).toHaveCount(1, { timeout: 10_000 });
-
-    await page.getByRole("button", { name: /Enhanced view/i }).click();
-    await expect(page.locator("canvas")).toHaveCount(0);
-
-    // Refusing it once has to mean refusing it, not refusing it until the next
-    // page load — it is the escape hatch AGENTS.md rule 14 promises.
-    await page.reload();
-    await page.waitForTimeout(2500);
-    await expect(page.locator("canvas")).toHaveCount(0);
-  });
-
-  test("the studio actually paints something", async ({ page }) => {
-    // It once did not. `visible = false` on the shadow caster took it out of
-    // the shadow pass as well as the colour pass, and the motes were about a
-    // pixel across, so three.js loaded, held a WebGL context and rendered an
-    // empty canvas every frame. Nothing else in this suite noticed.
-    await intoAdhaar(page);
-    const stage = page.getByRole("group", STAGE);
-    await expect(page.locator("canvas")).toHaveCount(1, { timeout: 10_000 });
-
-    // The stage sits below the fold, so a viewport-relative clip misses it.
-    // An element screenshot scrolls to it and frames it for us. Holding the
-    // pointer at a fixed spot parks the tilt and kills the idle float, so the
-    // card is in the same pose in both shots and the only thing that can
-    // differ is what the studio painted around it.
-    const settle = async () => {
-      await stage.hover({ position: { x: 60, y: 40 } });
-      await page.waitForTimeout(1200);
-      return stage.screenshot();
-    };
-
-    const lit = await settle();
-    await page.getByRole("button", { name: /Enhanced view/i }).click();
-    await expect(page.locator("canvas")).toHaveCount(0);
-    const unlit = await settle();
-
-    // Byte-inequality is not enough — two shots of the *same* state differ by
-    // a fraction of a percent from antialiasing alone, so an empty canvas
-    // passes that. A cast shadow and a pool of light are a lot of gradient,
-    // and they show up as a much larger PNG: measured at 1.46x when the
-    // studio paints and 1.002x when it does not.
-    const ratio = lit.length / unlit.length;
-    expect(ratio, `studio adds only ${((ratio - 1) * 100).toFixed(1)}% of detail`).toBeGreaterThan(
-      1.15,
-    );
   });
 
   test("the card is reachable from the places a reader already is", async ({ page }) => {

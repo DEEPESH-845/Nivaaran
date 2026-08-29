@@ -30,7 +30,7 @@ function LangToggle({ isDark = false }: { isDark?: boolean }) {
     <button
       type="button"
       onClick={() => setLang(lang === "en" ? "hi" : "en")}
-      className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-ctl border px-3 text-sm font-medium transition-colors ${
+      className={`inline-flex min-h-[40px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-ctl border px-3 text-sm font-medium transition-colors ${
         isDark
           ? "border-white/20 bg-white/5 text-white hover:bg-white/10"
           : "border-line-strong bg-paper-raised text-ink hover:border-ink-mute hover:bg-paper-sunk"
@@ -53,7 +53,7 @@ function Wordmark({ isDark = false }: { isDark?: boolean }) {
   return (
     <Link
       href="/"
-      className="group inline-flex items-baseline gap-2 rounded-ctl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+      className="group inline-flex shrink-0 items-baseline gap-2 whitespace-nowrap rounded-ctl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
       aria-label="Nivaaran — home"
     >
       <span className={`font-display text-2xl leading-none tracking-[-0.02em] transition-colors ${isDark ? "text-white" : "text-ink"}`}>
@@ -81,15 +81,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // /story has a completely dark background
   const isCinematic = pathname === "/story";
 
-  // Lock scroll when mobile menu is open
+  // Lock scroll while the drawer is open, and let Escape close it — a panel
+  // that covers the page and can only be dismissed by pointing at the right
+  // 44 pixels is not navigable by keyboard.
   useEffect(() => {
-    if (mobileMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    if (!mobileMenuOpen) return;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuFor(null);
+    };
+    document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKey);
     };
   }, [mobileMenuOpen]);
 
@@ -133,17 +137,26 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <NoticeBar />
 
       <header className={`sticky top-0 z-40 border-b print:hidden transition-colors duration-300 ${headerClass}`}>
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
-          <Wordmark isDark={isCinematic} />
-          
+        {/* Three regions, sized on purpose: the brand and the utilities are
+            fixed-size bookends, the navigation takes the slack between them.
+            The bar gets a wider column than the page body — chrome is not
+            content, and at max-w-5xl the desktop navigation needed 1052px of
+            a 992px line, which is why the brand sat flush against "Dashboard"
+            and every two-word label wrapped onto a second line. */}
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-8 px-4 sm:px-6 lg:px-8">
+          <div className="shrink-0">
+            <Wordmark isDark={isCinematic} />
+          </div>
+
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-6">
-            <nav className="flex items-center gap-5">
+          <div className="hidden min-w-0 flex-1 xl:flex items-center gap-6">
+            <nav className="flex flex-1 items-center gap-5">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`text-sm font-medium transition-colors ${
+                  aria-current={pathname === link.href ? "page" : undefined}
+                  className={`whitespace-nowrap text-sm font-medium transition-colors ${
                     isCinematic ? "text-white/80 hover:text-white" : "text-ink-soft hover:text-ink"
                   } ${pathname === link.href ? (isCinematic ? 'text-white' : 'text-ink') : ''}`}
                 >
@@ -151,21 +164,21 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 </Link>
               ))}
             </nav>
-            <div className={`h-4 w-px ${isCinematic ? 'bg-white/20' : 'bg-line-strong'}`}></div>
+            <div className={`h-4 w-px shrink-0 ${isCinematic ? 'bg-white/20' : 'bg-line-strong'}`}></div>
             <LangToggle isDark={isCinematic} />
             <ThemeToggle isDark={isCinematic} />
             {user ? (
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <Link
                   href="/account"
-                  className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-ctl px-3 text-sm font-medium transition-colors ${
+                  className={`inline-flex min-h-[40px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-ctl px-3 text-sm font-medium transition-colors ${
                     isCinematic ? "text-white/85 hover:text-white" : "text-ink-soft hover:text-ink"
                   }`}
                 >
                   <User aria-hidden className="size-4" strokeWidth={1.8} />
                   {user.name.split(" ")[0]}
                   {user.demo ? (
-                    <span className="rounded-full border border-caution-200 bg-caution-50 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-[0.05em] text-caution-700">
+                    <span className="shrink-0 whitespace-nowrap rounded-full border border-caution-200 bg-caution-50 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-[0.05em] text-caution-700">
                       {lang === "hi" ? "डेमो" : "Demo"}
                     </span>
                   ) : null}
@@ -173,7 +186,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={() => void signOut().then(() => router.push("/"))}
-                  className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-ctl border px-3 text-sm font-medium transition-colors ${
+                  className={`inline-flex min-h-[40px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-ctl border px-3 text-sm font-medium transition-colors ${
                     isCinematic
                       ? "border-white/20 text-white hover:bg-white/10"
                       : "border-line-strong text-ink hover:bg-paper-sunk"
@@ -184,7 +197,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <Link
                   href="/login"
                   className={`inline-flex min-h-[40px] items-center rounded-ctl px-3 text-sm font-medium transition-colors ${
@@ -207,8 +220,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             )}
           </div>
 
-          {/* Mobile Toggle */}
-          <div className="flex lg:hidden items-center gap-3">
+          {/* Tablet + mobile: the drawer, not a squeezed desktop bar. */}
+          <div className="ml-auto flex shrink-0 items-center gap-3 xl:hidden">
             <LangToggle isDark={isCinematic} />
             <ThemeToggle isDark={isCinematic} />
             <button
@@ -217,7 +230,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 isCinematic ? "text-white hover:bg-white/10" : "text-ink hover:bg-paper-sunk"
               }`}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-nav"
+              aria-label={
+                mobileMenuOpen
+                  ? lang === "hi" ? "मेन्यू बंद करें" : "Close menu"
+                  : lang === "hi" ? "मेन्यू खोलें" : "Open menu"
+              }
             >
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -226,12 +245,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
-        <div className={`absolute inset-x-0 top-full z-30 flex max-h-[calc(100dvh-4rem)] flex-col overflow-y-auto px-4 py-6 lg:hidden ${mobileBgClass}`}>
-          <nav className="flex flex-col gap-4 text-lg">
+        <div id="mobile-nav" className={`absolute inset-x-0 top-full z-30 flex max-h-[calc(100dvh-4rem)] flex-col overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 xl:hidden ${mobileBgClass}`}>
+          <nav aria-label={lang === "hi" ? "मुख्य मेन्यू" : "Main menu"} className="flex flex-col gap-4 text-lg">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
+                aria-current={pathname === link.href ? "page" : undefined}
                 className={`block py-3 font-medium border-b ${
                   isCinematic ? "border-white/10 text-white/90" : "border-line text-ink"
                 }`}

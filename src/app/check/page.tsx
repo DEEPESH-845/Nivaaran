@@ -1,12 +1,14 @@
 "use client";
 
-import { Suspense, useEffect, useTransition } from "react";
+import { Suspense, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, CreditCard, FileText, Landmark, ScanLine } from "lucide-react";
 import Link from "next/link";
 import { Button, Card, Choice, Disclosure, Divider, SectionLabel } from "@/components/ui";
+import { PERSONAS } from "@/content/personas";
 import { JourneyRail } from "@/components/journey-rail";
 import { QUESTIONS } from "@/lib/questions";
+import { formatDate } from "@/lib/date";
 import { useLang } from "@/lib/i18n/context";
 import { useSession } from "@/lib/state/session";
 
@@ -26,7 +28,7 @@ function RecordsStep() {
       icon: Landmark,
       items: [
         { k: { en: "Name", hi: "नाम" }, v: epfo.name },
-        { k: { en: "Date of birth", hi: "जन्मतिथि" }, v: epfo.dob },
+        { k: { en: "Date of birth", hi: "जन्मतिथि" }, v: formatDate(epfo.dob) },
         { k: { en: "Bank IFSC", hi: "बैंक IFSC" }, v: epfo.ifsc },
         { k: { en: "Account", hi: "खाता" }, v: `•••• ${epfo.accountLast4}` },
       ],
@@ -36,7 +38,7 @@ function RecordsStep() {
       icon: FileText,
       items: [
         { k: { en: "Aadhaar name", hi: "आधार का नाम" }, v: aadhaar?.name ?? "—" },
-        { k: { en: "Aadhaar date of birth", hi: "आधार की जन्मतिथि" }, v: aadhaar?.dob ?? "—" },
+        { k: { en: "Aadhaar date of birth", hi: "आधार की जन्मतिथि" }, v: formatDate(aadhaar?.dob) || "—" },
         { k: { en: "Passbook name", hi: "पासबुक का नाम" }, v: bank?.name ?? "—" },
         { k: { en: "Passbook IFSC", hi: "पासबुक का IFSC" }, v: bank?.ifsc ?? "—" },
       ],
@@ -155,17 +157,48 @@ function CheckFlow() {
   const router = useRouter();
   const params = useSearchParams();
   const { lang, t, ui } = useLang();
-  const { session, ready, setFacts } = useSession();
+  const { session, ready, begin, setFacts } = useSession();
   const [navigating, startNavigation] = useTransition();
 
   const raw = Number(params.get("q") ?? "0");
   const step = Number.isFinite(raw) ? Math.min(Math.max(raw, 0), LAST) : 0;
 
-  useEffect(() => {
-    if (ready && !session.facts) router.replace("/");
-  }, [ready, session.facts, router]);
-
   const facts = session.facts;
+
+  // Arriving here without a case — a bookmark, a reload with storage cleared —
+  // used to bounce to the landing page. A client-side redirect replaces the
+  // whole document a beat after the first paint, which is a layout shift the
+  // reader sees and Lighthouse counts, and it drops someone who asked for the
+  // check onto a page that is an argument. The other two entrances to the
+  // journey (/documents, /adhaar) already ask the question here; so does this.
+  if (ready && !facts) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:py-14">
+        <div className="space-y-3">
+          <SectionLabel>{lang === "hi" ? "जाँच" : "The check"}</SectionLabel>
+          <h1 className="display max-w-3xl text-balance">
+            {lang === "hi" ? "आप किस स्थिति में हैं?" : "Which of these is you?"}
+          </h1>
+          <p className="max-w-2xl text-md leading-relaxed text-ink-soft">
+            {lang === "hi"
+              ? "जाँच के लिए एक रिकॉर्ड चाहिए। जिस स्थिति के लिए आप आए हैं वह चुनें — वही काल्पनिक सदस्य रिकॉर्ड इस्तेमाल होगा।"
+              : "The check needs a record to run against. Pick the situation you are here for and we will use that synthetic member record."}
+          </p>
+        </div>
+        <div className="space-y-2.5">
+          {PERSONAS.map((p) => (
+            <Choice
+              key={p.id}
+              label={`“${t(p.saying)}”`}
+              hint={`${lang === "hi" ? "नमूना" : "Demo"} · ${p.name}, ${p.age}, ${p.city}`}
+              onClick={() => begin(p.id, p.facts)}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (!ready || !facts) {
     return (
       <div className="mx-auto min-h-[70vh] max-w-3xl px-4 py-16">

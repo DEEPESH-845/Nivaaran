@@ -519,14 +519,17 @@ function ActionRow({ group }: { group: FixGroup }) {
 
   return (
     <Card className="p-4 sm:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0 space-y-1">
           <p className="font-semibold text-ink">{t(fix.summary)}</p>
           <p className="text-sm leading-relaxed text-ink-soft">
             {group.findings.map((f) => t(f.title)).join(lang === "hi" ? " · " : " · ")}
           </p>
         </div>
-        <Badge tone={group.owner === "citizen" ? "caution" : "blocked"}>
+        <Badge
+          tone={group.owner === "citizen" ? "caution" : "blocked"}
+          className="whitespace-nowrap"
+        >
           {lang === "hi" ? "किसका काम" : "Owner"}: {OWNER_LABEL[group.owner][lang]}
         </Badge>
       </div>

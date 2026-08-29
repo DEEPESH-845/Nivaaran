@@ -1,18 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
-import { Button, ButtonLink, Callout, Card, Choice, Divider, SectionLabel } from "@/components/ui";
+import { ButtonLink, Callout, Card, Choice, Divider, SectionLabel } from "@/components/ui";
 import { CardStage } from "@/components/adhaar/card-stage";
 import { DetailsForm } from "@/components/adhaar/details-form";
 import type { CardDetails } from "@/components/adhaar/specimen-card";
-import {
-  enhancedNow,
-  enhancedOnServer,
-  readOptOut,
-  subscribeEnhance,
-  writeOptOut,
-} from "@/lib/adhaar/enhance";
 import { PERSONAS, type Persona } from "@/content/personas";
 import { useAuth } from "@/lib/auth/context";
 import { JourneyRail } from "@/components/journey-rail";
@@ -59,10 +52,9 @@ const COPY = {
     en: "A card needs a record behind it. Pick the situation you are here for and we will use that synthetic member record.",
     hi: "कार्ड के पीछे एक रिकॉर्ड चाहिए। आप जिस स्थिति के लिए आए हैं वह चुनें — वही काल्पनिक सदस्य रिकॉर्ड इस्तेमाल होगा।",
   },
-  enhanced: { en: "Enhanced view", hi: "बेहतर दृश्य" },
-  enhancedHint: {
-    en: "Adds real lighting behind the card. Loads only after the page is ready, and never on a slow connection.",
-    hi: "कार्ड के पीछे असली रोशनी जोड़ता है। पेज तैयार होने के बाद ही लोड होता है, और धीमे नेटवर्क पर कभी नहीं।",
+  fromDocument: {
+    en: "This name and date of birth came from the document you had read. Correct anything that is wrong — the card and the verdict follow what is here.",
+    hi: "यह नाम और जन्मतिथि उसी दस्तावेज़ से आई है जो आपने पढ़वाया था। कुछ ग़लत हो तो सुधार लें — कार्ड और नतीजा यहीं से चलते हैं।",
   },
   seeVerdict: { en: "See what this changes", hi: "देखें इससे क्या बदला" },
   compare: { en: "Compare it against a document", hi: "दस्तावेज़ से मिलान करें" },
@@ -74,7 +66,15 @@ const COPY = {
  * record remounts it with fresh seed values instead of an effect racing to
  * overwrite what the reader has already typed.
  */
-function CardEditor({ facts, persona }: { facts: Facts; persona: Persona | null }) {
+function CardEditor({
+  facts,
+  persona,
+  filledFromDocument,
+}: {
+  facts: Facts;
+  persona: Persona | null;
+  filledFromDocument: boolean;
+}) {
   const { t } = useLang();
   const { user } = useAuth();
   const { setFacts } = useSession();
@@ -94,9 +94,6 @@ function CardEditor({ facts, persona }: { facts: Facts; persona: Persona | null 
     };
   });
   const [revealed, setRevealed] = useState(false);
-
-  const optOut = useSyncExternalStore(subscribeEnhance, readOptOut, enhancedOnServer);
-  const enhanced = useSyncExternalStore(subscribeEnhance, enhancedNow, enhancedOnServer);
 
   // Debounced because the card repaints on the keystroke but the session does
   // not need to: a fifteen-character name is otherwise fifteen writes to
@@ -135,15 +132,15 @@ function CardEditor({ facts, persona }: { facts: Facts; persona: Persona | null 
 
   return (
     <>
-      <CardStage details={details} revealed={revealed} enhanced={enhanced} />
+      <CardStage details={details} revealed={revealed} />
 
-      <div className="flex flex-wrap items-center justify-center gap-3">
-        <Button tone="quiet" onClick={() => writeOptOut(!optOut)} aria-pressed={!optOut}>
-          <Sparkles aria-hidden className="size-4" strokeWidth={1.8} />
-          {t(COPY.enhanced)}
-        </Button>
-        <p className="max-w-sm text-xs leading-relaxed text-ink-mute">{t(COPY.enhancedHint)}</p>
-      </div>
+      {/* A value nobody typed has to say where it came from. */}
+      {filledFromDocument ? (
+        <p className="flex items-start gap-2 text-sm leading-relaxed text-ink-mute">
+          <Sparkles aria-hidden className="mt-0.5 size-3.5 shrink-0 text-indigo-600" strokeWidth={1.8} />
+          {t(COPY.fromDocument)}
+        </p>
+      ) : null}
 
       <Callout tone="caution" title={t(COPY.specimenTitle)}>
         {t(COPY.specimenBody)}
@@ -230,7 +227,12 @@ export default function AdhaarPage() {
           <p className="max-w-2xl text-md leading-relaxed text-ink-soft">{t(COPY.lede)}</p>
         </section>
 
-        <CardEditor key={session.personaId ?? "none"} facts={facts} persona={persona} />
+        <CardEditor
+          key={session.personaId ?? "none"}
+          facts={facts}
+          persona={persona}
+          filledFromDocument={Boolean(session.filledFromDocument)}
+        />
       </div>
     </>
   );

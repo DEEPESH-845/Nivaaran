@@ -20,9 +20,17 @@ const instrument = Instrument_Serif({
   display: "swap",
 });
 
+/**
+ * Devanagari is the expensive one. The subset is an order of magnitude larger
+ * than a Latin face — three weights of it was 200KB on the wire, on every page
+ * in the product, and on a slow connection that is what the largest paint is
+ * waiting for. One weight now; the browser synthesises the heavier steps, and
+ * the language toggle in the header means these glyphs are on the page in both
+ * languages, so this stays preloaded rather than discovered late.
+ */
 const devanagari = Noto_Sans_Devanagari({
   subsets: ["devanagari"],
-  weight: ["400", "500", "600"],
+  weight: "400",
   variable: "--font-noto-deva",
   display: "swap",
 });
