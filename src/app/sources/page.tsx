@@ -4,6 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { Badge, Card, SectionLabel, type Tone } from "@/components/ui";
 import { SOURCE_LIST } from "@/lib/rules/sources";
 import { RULES, ENGINE_VERSION } from "@/lib/rules/rules";
+import { PrivacyPanel } from "@/components/privacy-panel";
 import { useLang } from "@/lib/i18n/context";
 import type { Confidence } from "@/lib/rules/types";
 
@@ -134,6 +135,13 @@ export default function SourcesPage() {
           </p>
         </Card>
       </section>
+      <section aria-labelledby="privacy" className="space-y-3">
+        <h2 id="privacy" className="text-xl font-semibold tracking-[-0.01em] text-ink">
+          {lang === "hi" ? "गोपनीयता" : "Privacy"}
+        </h2>
+        <PrivacyPanel />
+      </section>
+
     </div>
   );
 }

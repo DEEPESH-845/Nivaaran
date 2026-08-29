@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
 import { personaById } from "@/content/personas";
+import { fail, ok, readJson } from "@/lib/api/respond";
 import { preflight } from "@/lib/rules/engine";
-import { RULES } from "@/lib/rules/rules";
+import { ENGINE_VERSION, RULES, RULE_IDS } from "@/lib/rules/rules";
 import { SOURCES } from "@/lib/rules/sources";
+import { clientKey, rateLimit } from "@/lib/security/ratelimit";
+import { FactsSchema } from "@/lib/validation/facts";
 import type { Facts } from "@/lib/rules/types";
 
 /**
@@ -16,7 +17,10 @@ import type { Facts } from "@/lib/rules/types";
  *
  * Deliberately unauthenticated and side-effect free: it stores nothing, logs
  * no payload, and needs no personal identifiers — only the shape of a record.
+ * It is rate limited, because an open endpoint on a public URL always is.
  */
+
+export const API_VERSION = "v1";
 
 /**
  * The record the /api page documents and the demo runs on. Read from the
@@ -25,58 +29,17 @@ import type { Facts } from "@/lib/rules/types";
  */
 const EXAMPLE_RECORD = personaById("rajesh")!.facts;
 
-const TriState = z.enum(["yes", "no", "unsure"]);
-
-const FactsSchema = z.object({
-  intent: z.enum(["final_settlement", "decode_rejection"]).default("final_settlement"),
-  daysSinceExit: z.number().int().min(0).max(20000),
-  exitDateFiled: TriState,
-  uanAadhaarVerified: TriState,
-  uanBeforeOct2017: TriState,
-  multipleUans: TriState,
-  serviceYears: z.number().min(0).max(60),
-  claimAmount: z.number().min(0).max(100_000_000),
-  panOnRecord: z.boolean(),
-  records: z.object({
-    epfo: z.object({
-      name: z.string().min(1).max(120),
-      dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      ifsc: z.string().max(20),
-      accountLast4: z.string().max(4),
-      // Optional directory metadata: the engine still validates IFSC format
-      // itself, while these values can additionally flag a retired code.
-      ifscValid: z.boolean().optional(),
-      ifscRetiredTo: z.string().min(1).max(120).optional(),
-    }),
-    aadhaar: z
-      .object({
-        name: z.string().min(1).max(120),
-        dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      })
-      .optional(),
-    bank: z
-      .object({
-        name: z.string().min(1).max(120),
-        ifsc: z.string().max(20),
-        accountLast4: z.string().max(4),
-        ifscValid: z.boolean().optional(),
-        ifscRetiredTo: z.string().min(1).max(120).optional(),
-      })
-      .optional(),
-  }),
-});
-
 export async function GET() {
-  return NextResponse.json({
+  return ok({
     service: "nivaaran-preflight",
+    apiVersion: API_VERSION,
+    engineVersion: ENGINE_VERSION,
     description:
       "Deterministic pre-submission validation for EPF claims. POST a member record shape and receive every blocker, who owns it, how to fix it, and the source of the rule.",
     method: "POST",
     ruleCount: RULES.length,
-    ruleIds: [
-      "R-AADHAAR-SEED", "R-EXIT-DATE", "R-MULTI-UAN", "R-NAME-AADHAAR",
-      "R-DOB-AADHAAR", "R-BANK-NAME", "R-IFSC", "R-WAIT-60D", "R-TDS-192A",
-    ],
+    ruleIds: RULE_IDS,
+    rateLimit: { requestsPerMinute: 30, scope: "per client address" },
     sources: Object.values(SOURCES).map((s) => ({
       id: s.id,
       url: s.url,
@@ -92,48 +55,36 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { error: "invalid_json", message: "Request body must be JSON." },
-      { status: 400 },
-    );
-  }
+  if (!rateLimit("publicApi", clientKey(request)).ok) return fail("RATE_LIMITED");
+
+  const body = await readJson(request, 32 * 1024);
+  if (body === null) return fail("INVALID_REQUEST", { message: "Request body must be JSON under 32 KB." });
 
   const parsed = FactsSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      {
-        error: "invalid_request",
-        message: "The member record did not match the expected shape.",
-        issues: parsed.error.issues.map((i) => ({
-          path: i.path.join("."),
-          message: i.message,
-        })),
-      },
-      { status: 422 },
-    );
+    return fail("INVALID_REQUEST", {
+      message: "The member record did not match the expected shape.",
+      fields: Object.fromEntries(
+        parsed.error.issues.slice(0, 12).map((i) => [i.path.join(".") || "body", i.message]),
+      ),
+    });
   }
 
   const result = preflight(parsed.data as Facts);
 
-  return NextResponse.json(
-    {
-      ...result,
-      findings: result.findings.map((f) => ({
-        ...f,
-        source: {
-          id: f.sourceId,
-          url: SOURCES[f.sourceId]?.url,
-          verifiedOn: SOURCES[f.sourceId]?.verifiedOn,
-          confidence: SOURCES[f.sourceId]?.confidence,
-        },
-      })),
-      disclaimer:
-        "Advisory only. EPFO makes the final decision on any claim. Independent hackathon prototype.",
-    },
-    { headers: { "cache-control": "no-store" } },
-  );
+  return ok({
+    apiVersion: API_VERSION,
+    ...result,
+    findings: result.findings.map((f) => ({
+      ...f,
+      source: {
+        id: f.sourceId,
+        url: SOURCES[f.sourceId]?.url,
+        verifiedOn: SOURCES[f.sourceId]?.verifiedOn,
+        confidence: SOURCES[f.sourceId]?.confidence,
+      },
+    })),
+    disclaimer:
+      "Advisory only. EPFO makes the final decision on any claim. Independent hackathon prototype.",
+  });
 }
