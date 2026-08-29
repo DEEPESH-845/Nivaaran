@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/context";
 import { useAuth } from "@/lib/auth/context";
 import { LogOut, Menu, User, X } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 /**
  * Persistent, unmissable disclosure. Required by the brief and by decency.
@@ -115,7 +116,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       ];
 
   const headerClass = isCinematic 
-    ? "bg-black/50 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-black/40 border-white/10" 
+    ? "bg-black/85 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-black/75 border-white/10" 
     : "bg-paper/80 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-paper/60 border-line/40";
     
   const mobileBgClass = isCinematic 
@@ -151,6 +152,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </nav>
             <div className={`h-4 w-px ${isCinematic ? 'bg-white/20' : 'bg-line-strong'}`}></div>
             <LangToggle isDark={isCinematic} />
+            <ThemeToggle isDark={isCinematic} />
             {user ? (
               <div className="flex items-center gap-2">
                 <Link
@@ -207,6 +209,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           {/* Mobile Toggle */}
           <div className="flex lg:hidden items-center gap-3">
             <LangToggle isDark={isCinematic} />
+            <ThemeToggle isDark={isCinematic} />
             <button
               type="button"
               className={`-mr-2 inline-flex size-11 items-center justify-center rounded-md transition-colors ${

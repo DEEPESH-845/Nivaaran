@@ -13,7 +13,7 @@ export function StoryCTA({ className = "" }: { className?: string }) {
     <div
       className={`flex w-full max-w-2xl flex-col items-center text-center ${className}`}
     >
-      <h2 className="font-display text-balance text-[clamp(1.875rem,8vw,3.75rem)] leading-[1.05] tracking-[-0.02em] text-paper">
+      <h2 className="font-display text-balance text-[clamp(1.875rem,8vw,3.75rem)] leading-[1.05] tracking-[-0.02em] text-white">
         Ready to make PF simpler?
       </h2>
       <p className="mt-4 max-w-md text-balance text-md leading-relaxed text-white/70">
