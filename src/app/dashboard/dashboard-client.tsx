@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock,
+  CreditCard,
   FileText,
   ScanLine,
   ShieldCheck,
@@ -330,13 +331,24 @@ export function DashboardClient({
                 ? "हम मिलान करते हैं, प्रमाणित नहीं। तस्वीरें सहेजी नहीं जातीं।"
                 : "We compare, we do not verify. Images are not stored."}
             </p>
-            <Link
-              href="/documents"
-              className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
-            >
-              <ScanLine aria-hidden className="size-4" strokeWidth={1.8} />
-              {lang === "hi" ? "दस्तावेज़ मिलाएँ" : "Compare documents"}
-            </Link>
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+              <Link
+                href="/documents"
+                className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+              >
+                <ScanLine aria-hidden className="size-4" strokeWidth={1.8} />
+                {lang === "hi" ? "दस्तावेज़ मिलाएँ" : "Compare documents"}
+              </Link>
+              {/* The same record, without a photograph: the card is the manual
+                  way into the Aadhaar side, and the way to see what it is. */}
+              <Link
+                href="/adhaar"
+                className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+              >
+                <CreditCard aria-hidden className="size-4" strokeWidth={1.8} />
+                {lang === "hi" ? "अपना आधार कार्ड देखें" : "See your Aadhaar card"}
+              </Link>
+            </div>
           </Card>
         </section>
 
