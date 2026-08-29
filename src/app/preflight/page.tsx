@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, CalendarClock, Printer, RotateCcw } from "lucide-react";
-import { Badge, Button, ButtonLink, Callout, Card, SectionLabel } from "@/components/ui";
+import { ActionFooter, Badge, Button, ButtonLink, Callout, Card, SectionLabel } from "@/components/ui";
 import { JourneyRail } from "@/components/journey-rail";
 import { FindingCard } from "@/components/finding-card";
 import { RejectionDecoder } from "@/components/rejection-decoder";
@@ -174,17 +174,21 @@ export default function PreflightPage() {
             an HR desk, an EPFO counter, a family member who reads better than
             they type. Printing expands every fix panel and every citation. */}
         {n > 0 ? (
-          <div className="print:hidden">
-            <Button tone="secondary" onClick={() => window.print()}>
-              <Printer aria-hidden className="size-4" strokeWidth={1.8} />
-              {lang === "hi" ? "यह योजना प्रिंट करें" : "Print this plan"}
-            </Button>
-            <p className="mt-2 text-xs leading-relaxed text-ink-mute">
+          <ActionFooter
+            className="print:hidden"
+            action={
+              <Button tone="secondary" onClick={() => window.print()}>
+                <Printer aria-hidden className="size-4" strokeWidth={1.8} />
+                {lang === "hi" ? "यह योजना प्रिंट करें" : "Print this plan"}
+              </Button>
+            }
+          >
+            <p className="text-xs leading-relaxed text-ink-mute">
               {lang === "hi"
                 ? "हर सुधार के चरण और हर स्रोत खुले हुए छपते हैं — इसे नियोक्ता के HR या EPFO काउंटर पर ले जाया जा सकता है।"
                 : "Every fix step and every citation prints expanded, so this can be carried to an employer's HR desk or an EPFO counter."}
             </p>
-          </div>
+          </ActionFooter>
         ) : null}
 
         <div className="print:hidden">

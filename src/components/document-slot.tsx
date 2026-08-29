@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { FileUp, RotateCcw } from "lucide-react";
 import { Badge, Button, Choice, SectionLabel, type Tone } from "@/components/ui";
+import { readSampleDocument } from "@/lib/documents/sample";
 import { useLang } from "@/lib/i18n/context";
 import type { Bi, Confidence } from "@/lib/rules/types";
 
@@ -16,6 +17,13 @@ import type { Bi, Confidence } from "@/lib/rules/types";
  * storage at any point.
  *
  * The slot reads; it never decides. What the values mean is `reconcile`'s job.
+ *
+ * Two things it must never do, both of which it once did. It must not leave a
+ * reader typing in values that are printed on the page they just chose — with
+ * no `OPENAI_API_KEY` every reading failed and the fallback was the keyboard,
+ * so a specimen we ship is now read directly (`lib/documents/sample.ts`) when
+ * the model cannot be. And a slow reading must not land on top of a newer one:
+ * every call carries a sequence number and a stale answer is dropped.
  */
 
 const MAX_EDGE = 1600;
@@ -32,6 +40,8 @@ export interface SlotReading {
   };
   confidence: Confidence;
   quality: Quality;
+  /** Read by the model, or read straight off a specimen we ship. */
+  source: ReadSource;
 }
 
 const SAMPLES: Record<SlotKind, { id: string; src: string; label: Bi; hint: Bi }[]> = {
@@ -79,6 +89,12 @@ const COPY = {
     hi: "पढ़ा जा रहा दस्तावेज़, आपके ब्राउज़र में छोटा किया हुआ",
   },
   again: { en: "Read another", hi: "दूसरा पढ़ें" },
+  preparing: { en: "Preparing the image…", hi: "तस्वीर तैयार की जा रही है…" },
+  fromSpecimen: { en: "Read from the specimen", hi: "नमूने से पढ़ा गया" },
+  fromSpecimenNote: {
+    en: "The document reader is not switched on, so we read this sample directly instead. Your own photograph would need the reader.",
+    hi: "दस्तावेज़ पढ़ने वाली सुविधा चालू नहीं है, इसलिए यह नमूना सीधे पढ़ा गया। आपकी अपनी तस्वीर के लिए वह सुविधा ज़रूरी है।",
+  },
   unavailable: {
     en: "Reading documents isn't available right now. You can still type the values in below.",
     hi: "अभी दस्तावेज़ पढ़ना उपलब्ध नहीं है। आप नीचे मान ख़ुद भी भर सकते हैं।",
@@ -153,10 +169,13 @@ async function downscale(src: string): Promise<string> {
   return canvas.toDataURL("image/jpeg", 0.8);
 }
 
+/** Where a reading came from. The screen says which; they are not the same. */
+export type ReadSource = "model" | "specimen";
+
 type State =
   | { kind: "idle" }
-  | { kind: "reading" }
-  | { kind: "read"; confidence: Confidence; quality: Quality }
+  | { kind: "reading"; stage: "preparing" | "reading" }
+  | { kind: "read"; confidence: Confidence; quality: Quality; source: ReadSource }
   | { kind: "unavailable" };
 
 export function DocumentSlot({
@@ -172,15 +191,34 @@ export function DocumentSlot({
   const [preview, setPreview] = useState<string | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const latest = useRef(0);
   const inputId = `document-file-${kind}`;
 
   async function read(src: string, sampleId: string | null) {
+    // Every reading carries a sequence number. Choose a second document while
+    // the first is still in flight and the first answer is dropped on arrival
+    // instead of overwriting the newer one.
+    const mine = ++latest.current;
+    const current = () => latest.current === mine;
+
     setChosen(sampleId);
-    setState({ kind: "reading" });
+    setState({ kind: "reading", stage: "preparing" });
     setPreview(null);
+
+    /** The specimens are ours and their values are text, not pixels. */
+    const fromSpecimen = async (): Promise<boolean> => {
+      const fields = sampleId ? await readSampleDocument(src) : null;
+      if (!fields || !current()) return false;
+      setState({ kind: "read", confidence: "high", quality: "clear", source: "specimen" });
+      onRead({ fields, confidence: "high", quality: "clear", source: "specimen" });
+      return true;
+    };
+
     try {
       const image = await downscale(src);
+      if (!current()) return;
       setPreview(image);
+      setState({ kind: "reading", stage: "reading" });
 
       const res = await fetch("/api/ai/extract", {
         method: "POST",
@@ -188,12 +226,23 @@ export function DocumentSlot({
         body: JSON.stringify({ image }),
       });
       const data = await res.json();
+      if (!current()) return;
+
       if (!data?.ok) {
+        // No key, no budget, or a refusal. A sample can still be read; a
+        // reader's own photograph genuinely cannot, and says so.
+        if (await fromSpecimen()) return;
+        if (!current()) return;
         setState({ kind: "unavailable" });
         onRead(null);
         return;
       }
-      setState({ kind: "read", confidence: data.confidence, quality: data.quality });
+      setState({
+        kind: "read",
+        confidence: data.confidence,
+        quality: data.quality,
+        source: "model",
+      });
       onRead({
         fields: {
           name: data.fields.name ?? null,
@@ -203,8 +252,11 @@ export function DocumentSlot({
         },
         confidence: data.confidence,
         quality: data.quality,
+        source: "model",
       });
     } catch {
+      if (await fromSpecimen()) return;
+      if (!current()) return;
       setState({ kind: "unavailable" });
       onRead(null);
     }
@@ -220,6 +272,7 @@ export function DocumentSlot({
   }
 
   function reset() {
+    latest.current++; // an answer still in flight belongs to a document nobody is looking at
     setState({ kind: "idle" });
     setPreview(null);
     setChosen(null);
@@ -243,7 +296,11 @@ export function DocumentSlot({
       </div>
 
       {state.kind === "read" || state.kind === "reading" ? (
-        <div className="flex items-start gap-3">
+        // A fixed box for the preview, whatever the photograph's shape. A
+        // late-arriving image that sets its own height pushes the comparison
+        // below it down the page, which is the one movement this screen
+        // cannot afford — the reader is being sent there.
+        <div className="flex min-h-20 items-start gap-3">
           {preview ? (
             // Deliberately not next/image: an in-memory data URL that lives for
             // seconds and must never reach the image optimiser.
@@ -251,16 +308,31 @@ export function DocumentSlot({
             <img
               src={preview}
               alt={t(COPY.previewAlt)}
-              className="w-28 rounded-ctl border border-line"
+              className="h-20 w-28 shrink-0 rounded-ctl border border-line object-contain"
             />
-          ) : null}
+          ) : (
+            <div aria-hidden className="h-20 w-28 shrink-0 rounded-ctl bg-paper-sunk" />
+          )}
           <div className="min-w-0 space-y-2">
             {state.kind === "reading" ? (
-              <p className="text-sm text-ink-mute">{t(COPY.reading)}</p>
+              // Two stages, because there are two: the image is resized here
+              // before anything is read. A spinner that never changes says
+              // nothing about whether it is still working.
+              <p className="text-sm text-ink-mute">
+                {state.stage === "preparing" ? t(COPY.preparing) : t(COPY.reading)}
+              </p>
             ) : (
               <>
-                <Badge tone={ADVICE_TONE[advice!]}>{t(COPY[`advice_${advice!}` as const])}</Badge>
-                {qualityNote ? (
+                <Badge tone={state.source === "specimen" ? "neutral" : ADVICE_TONE[advice!]}>
+                  {state.source === "specimen"
+                    ? t(COPY.fromSpecimen)
+                    : t(COPY[`advice_${advice!}` as const])}
+                </Badge>
+                {state.source === "specimen" ? (
+                  <p className="text-sm leading-relaxed text-ink-mute">
+                    {t(COPY.fromSpecimenNote)}
+                  </p>
+                ) : qualityNote ? (
                   <p className="text-sm leading-relaxed text-caution-700">{t(qualityNote)}</p>
                 ) : null}
                 <Button tone="quiet" onClick={reset} className="whitespace-nowrap">
@@ -316,9 +388,13 @@ export function DocumentSlot({
 
       <p aria-live="polite" className="sr-only">
         {state.kind === "reading"
-          ? t(COPY.reading)
+          ? state.stage === "preparing"
+            ? t(COPY.preparing)
+            : t(COPY.reading)
           : state.kind === "read"
-            ? t(COPY[`advice_${adviceFor(state.confidence, state.quality)}` as const])
+            ? state.source === "specimen"
+              ? t(COPY.fromSpecimen)
+              : t(COPY[`advice_${adviceFor(state.confidence, state.quality)}` as const])
             : state.kind === "unavailable"
               ? t(COPY.unavailable)
               : ""}

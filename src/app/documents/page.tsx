@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, Info, X } from "lucide-react";
+import { ArrowRight, Check, Info, Sparkles, X } from "lucide-react";
 import { Badge, Button, Callout, Card, Choice, Divider, SectionLabel } from "@/components/ui";
 import { DocumentSlot, type SlotKind, type SlotReading } from "@/components/document-slot";
 import { PERSONAS } from "@/content/personas";
@@ -11,9 +11,13 @@ import {
   blockingRows,
   readRows,
   reconcile,
+  FIELD_LABELS,
   type DocumentValues,
+  type FieldId,
+  type Side,
   type ReconcileRow,
 } from "@/lib/match/reconcile";
+import { formatDate, formatDateForInput } from "@/lib/date";
 import { JourneyRail } from "@/components/journey-rail";
 import { useLang } from "@/lib/i18n/context";
 import { useSession } from "@/lib/state/session";
@@ -32,6 +36,16 @@ import type { Bi, Facts } from "@/lib/rules/types";
  * The table is built by `reconcile`, which calls the same matchers the rule
  * engine calls. If this screen and /preflight could disagree, one of them
  * would be lying.
+ *
+ * A reading fills the case. It used to fill four boxes on this screen and stop
+ * there, so someone who had just had their name and date of birth read off a
+ * document still met an empty card on /adhaar and an unchanged record on
+ * /check — the same four values, typed a second time, which is the friction
+ * this entire product is an argument against. Now a reading writes straight
+ * through to the facts, and the table below is the review rather than the
+ * data entry. Two things hold: a value the reader has edited by hand
+ * is never overwritten by a later reading, and a reading the model was not
+ * sure of fills the boxes but waits for the button before touching the case.
  */
 
 const COPY = {
@@ -93,10 +107,24 @@ const COPY = {
     hi: "हर मान बदला जा सकता है। तस्वीर से पढ़ना पूरी तरह सही नहीं होता — इस्तेमाल से पहले जो ग़लत हो सुधार लें।",
   },
   use: { en: "Use these and re-run my check", hi: "इन्हें लेकर जाँच दोबारा चलाएँ" },
+  filled: { en: "Filled from your document", hi: "आपके दस्तावेज़ से भरा गया" },
+  autofilled: {
+    en: "We filled these in from what we read, so you do not have to type them again. Every one is yours to correct.",
+    hi: "जो पढ़ा गया, वही यहाँ भर दिया है — ताकि आपको दोबारा टाइप न करना पड़े। हर मान आप बदल सकते हैं।",
+  },
+  heldBack: {
+    en: "We were not sure enough of this reading to use it. Check the values, then press the button below.",
+    hi: "इस पठन पर हमें पूरा भरोसा नहीं, इसलिए इसे अपने आप इस्तेमाल नहीं किया। मान जाँचकर नीचे का बटन दबाएँ।",
+  },
+  conflictTitle: { en: "This document disagrees with what you typed", hi: "यह दस्तावेज़ आपके भरे मान से अलग है" },
+  conflict: {
+    en: "We kept what you typed. Clear the field if you would rather use the document's value.",
+    hi: "आपका भरा हुआ मान रखा गया है। दस्तावेज़ वाला मान चाहिए तो खाना ख़ाली कर दें।",
+  },
   backToCheck: { en: "Back to the check", hi: "जाँच पर वापस" },
 } as const satisfies Record<string, Bi>;
 
-/** Merge the edited document values into the facts. Only on a button press. */
+/** Merge the current document values into the facts. */
 function merge(facts: Facts, identity: DocumentValues, bank: DocumentValues): Facts {
   const next = structuredClone(facts);
   const r = next.records;
@@ -145,35 +173,62 @@ function Verdict({ row }: { row: ReconcileRow }) {
 }
 
 function ValueInput({
+  field,
+  side,
   label,
   value,
   verdict,
+  fromDocument,
   onChange,
+  onCommit,
   type = "text",
 }: {
+  field: FieldId;
+  side: Side;
   label: string;
   value: string;
   verdict: "agrees" | "differs" | "unread";
+  /** Put here by a reading rather than by the reader. */
+  fromDocument: boolean;
   onChange: (v: string) => void;
+  /** Settle the value into the case, once the reader has stopped typing. */
+  onCommit: () => void;
   type?: string;
 }) {
-  const id = `doc-${label.replace(/\W+/g, "-").toLowerCase()}`;
+  const { t } = useLang();
+  // Two rows carry a box labelled "Identity document". Deriving the id from
+  // the label alone gave them the same one, which points both <label>s at the
+  // first input and leaves the second with no accessible name at all.
+  const id = `doc-${side}-${field}`;
+  const noteId = `${id}-source`;
   return (
-    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+    <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
       <label htmlFor={id} className="shrink-0 text-sm text-ink-mute sm:w-40">
         {label}
       </label>
-      <input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        autoComplete="off"
-        className={
-          "min-h-11 w-full rounded-ctl border bg-paper-raised px-3 font-mono text-sm text-ink " +
-          (verdict === "differs" ? "border-blocked-200" : "border-line-strong")
-        }
-      />
+      <div className="min-w-0 flex-1">
+        <input
+          id={id}
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onCommit}
+          aria-describedby={fromDocument ? noteId : undefined}
+          autoComplete="off"
+          className={
+            "min-h-11 w-full rounded-ctl border bg-paper-raised px-3 font-mono text-sm text-ink " +
+            (verdict === "differs" ? "border-blocked-200" : "border-line-strong")
+          }
+        />
+        {/* Where the value came from, on the value itself. Rendered only where
+            it is true — a label on every box is furniture, not information. */}
+        {fromDocument ? (
+          <p id={noteId} className="mt-1 flex items-center gap-1 text-2xs text-ink-mute">
+            <Sparkles aria-hidden className="size-3 text-indigo-600" strokeWidth={1.8} />
+            {t(COPY.filled)}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -186,6 +241,23 @@ export default function DocumentsPage() {
     identity: {},
     bank: {},
   });
+  // Where each value came from. One structure answers both questions the
+  // autofill has to answer: whether to label a box as filled for the reader,
+  // and whether a later reading is allowed to overwrite it.
+  const [origin, setOrigin] = useState<Record<SlotKind, Partial<Record<FieldId, "document" | "user">>>>({
+    identity: {},
+    bank: {},
+  });
+  /** Fields a reading wanted to change but the reader had already typed. */
+  const [conflicts, setConflicts] = useState<Bi[]>([]);
+  /** A reading we did not trust enough to write through on its own. */
+  const [heldBack, setHeldBack] = useState(false);
+  // A reading is asynchronous, so the callback the slot is holding was built
+  // in an earlier render and closes over the values of that render. Read one
+  // document while another is still being read and it would merge onto a
+  // stale copy. Assigned in an effect, never during render — the codebase's
+  // rule for latest-value refs.
+  const live = useRef({ values, origin });
   // Manual entry is revealed on request rather than shown by default: this is
   // a comparison, not a form, and four empty inputs would say otherwise. It is
   // also the only path left when the reader fails, which the slot promises.
@@ -194,19 +266,88 @@ export default function DocumentsPage() {
   const [reads, setReads] = useState(0);
   const comparisonRef = useRef<HTMLHeadingElement>(null);
 
+  useEffect(() => {
+    live.current = { values, origin };
+  });
+
   const facts = session.facts;
   const rows = useMemo(
     () => (facts ? reconcile(facts.records.epfo, values.identity, values.bank) : []),
     [facts, values],
   );
 
+  /**
+   * A reading arrives.
+   *
+   * It fills every field the reader has not already typed into, and — unless
+   * the reading was a doubtful one — writes straight through to the case, so
+   * /check, /adhaar and /preflight all show the values without anyone typing
+   * them again. A field the reader edited by hand is left exactly as it is and
+   * named in `conflicts`: replacing someone's own correction with a second
+   * photograph's guess is the one behaviour an autofill must never have.
+   */
   function onRead(kind: SlotKind, reading: SlotReading | null) {
-    setValues((prev) => ({ ...prev, [kind]: reading?.fields ?? {} }));
-    if (reading) setReads((n) => n + 1);
+    if (!reading) {
+      // The document goes; what the reader typed stays. Clearing everything
+      // here would make "Read another" quietly delete a correction they made
+      // by hand, which is the same sin as overwriting one.
+      const kept = Object.fromEntries(
+        Object.entries(live.current.origin[kind]).filter(([, o]) => o === "user"),
+      ) as Partial<Record<FieldId, "document" | "user">>;
+      setValues((prev) => ({
+        ...prev,
+        [kind]: Object.fromEntries(
+          Object.entries(prev[kind]).filter(([f]) => kept[f as FieldId]),
+        ) as DocumentValues,
+      }));
+      setOrigin((prev) => ({ ...prev, [kind]: kept }));
+      return;
+    }
+
+    const clash: Bi[] = [];
+    const current = live.current;
+    const next: DocumentValues = { ...current.values[kind] };
+    const nextOrigin = { ...current.origin[kind] };
+
+    for (const [field, raw] of Object.entries(reading.fields) as [FieldId, string | null][]) {
+      if (!raw) continue;
+      const value = field === "dob" ? (formatDateForInput(raw) || raw) : raw;
+      if (nextOrigin[field] === "user") {
+        if ((next[field] ?? "") !== value) {
+          clash.push(FIELD_LABELS[field]);
+        }
+        continue;
+      }
+      next[field] = value;
+      nextOrigin[field] = "document";
+    }
+
+    setValues((prev) => ({ ...prev, [kind]: next }));
+    setOrigin((prev) => ({ ...prev, [kind]: nextOrigin }));
+    setConflicts(clash);
+    setReads((n) => n + 1);
+
+    // Confidence-aware: a low-confidence reading fills the boxes so nothing has
+    // to be retyped, but it does not get to change the record on its own.
+    const trusted = reading.confidence !== "low" && reading.quality !== "not_a_document";
+    setHeldBack(!trusted);
+    if (trusted && facts) {
+      const merged =
+        kind === "identity" ? [next, current.values.bank] : [current.values.identity, next];
+      setFacts(merge(facts, merged[0], merged[1]), "documents");
+    }
   }
 
   function edit(kind: SlotKind, field: keyof DocumentValues, v: string) {
     setValues((prev) => ({ ...prev, [kind]: { ...prev[kind], [field]: v } }));
+    // Typing claims the field. A later reading will now leave it alone.
+    setOrigin((prev) => ({ ...prev, [kind]: { ...prev[kind], [field]: "user" } }));
+  }
+
+  /** Settle an edited value into the case, on blur rather than per keystroke. */
+  function commit() {
+    if (!facts) return;
+    setFacts(merge(facts, values.identity, values.bank), "documents");
   }
 
   // The answer renders below the fold, and nothing used to point at it: the
@@ -335,6 +476,23 @@ export default function DocumentsPage() {
                 </p>
               ) : null}
 
+              {heldBack ? (
+                <p className="rounded-ctl border border-caution-100 bg-caution-50 p-3 text-sm leading-relaxed text-caution-700">
+                  {t(COPY.heldBack)}
+                </p>
+              ) : (
+                <p className="flex items-start gap-2 text-sm leading-relaxed text-ink-mute">
+                  <Sparkles aria-hidden className="mt-0.5 size-3.5 shrink-0 text-indigo-600" strokeWidth={1.8} />
+                  {t(COPY.autofilled)}
+                </p>
+              )}
+
+              {conflicts.length > 0 ? (
+                <Callout tone="caution" title={t(COPY.conflictTitle)}>
+                  {conflicts.map((c) => t(c)).join(", ")} — {t(COPY.conflict)}
+                </Callout>
+              ) : null}
+
               <ul className="space-y-3">
                 {rows.map((row) => (
                   <li key={row.field}>
@@ -348,25 +506,39 @@ export default function DocumentsPage() {
                         <span className="shrink-0 text-sm text-ink-mute sm:w-40">
                           {t(COPY.epfoLabel)}
                         </span>
-                        <span className="tnum font-mono text-sm text-ink">{row.epfo}</span>
+                        <span className="tnum font-mono text-sm text-ink">
+                          {row.field === "dob" ? formatDate(row.epfo) : row.epfo}
+                        </span>
                       </div>
 
                       {row.sides.includes("identity") ? (
                         <ValueInput
+                          field={row.field}
+                          side="identity"
                           label={t(COPY.identityLabel)}
                           value={values.identity[row.field] ?? ""}
                           verdict={row.identity.verdict}
+                          fromDocument={origin.identity[row.field] === "document"}
+                          // A native date control, so the value stays ISO and
+                          // the reader still sees it the way their phone
+                          // writes a date. Everything we render ourselves goes
+                          // through formatDate — one format, one file.
                           type={row.field === "dob" ? "date" : "text"}
                           onChange={(v) => edit("identity", row.field, v)}
+                          onCommit={commit}
                         />
                       ) : null}
 
                       {row.sides.includes("bank") ? (
                         <ValueInput
+                          field={row.field}
+                          side="bank"
                           label={t(COPY.bankLabel)}
                           value={values.bank[row.field] ?? ""}
                           verdict={row.bank.verdict}
+                          fromDocument={origin.bank[row.field] === "document"}
                           onChange={(v) => edit("bank", row.field, v)}
+                          onCommit={commit}
                         />
                       ) : null}
 
