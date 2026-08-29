@@ -272,7 +272,7 @@ const PUBLIC = [
   // The not-found page is a Nivaaran page too, and nobody ever looks at it.
   "/no-such-page",
 ];
-const CITIZEN = ["/dashboard", "/check", "/preflight", "/claim", "/status", "/done", "/documents", "/account"];
+const CITIZEN = ["/dashboard", "/check", "/preflight", "/claim", "/status", "/done", "/documents", "/adhaar", "/account"];
 const EMPLOYER = ["/employer"];
 const ADMIN = ["/governance"];
 

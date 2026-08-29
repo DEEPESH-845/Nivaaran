@@ -160,6 +160,10 @@ export function FrameRenderer({
 
     return () => {
       cancelled = true;
+      // Up to 260 decoded plates, which at w1536 is tens of megabytes. Held
+      // in a ref, nothing releases them when the reader leaves /story, so the
+      // whole sequence survives the route change.
+      frames.current = [];
     };
   }, [frameCount]);
 
