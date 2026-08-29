@@ -346,7 +346,7 @@ export default function DocumentsPage() {
           {read.length > 0 ? (
             <Button
               onClick={() => {
-                setFacts(merge(facts, values.identity, values.bank));
+                setFacts(merge(facts, values.identity, values.bank), "documents");
                 setUsed(true);
               }}
             >
