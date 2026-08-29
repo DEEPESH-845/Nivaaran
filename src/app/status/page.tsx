@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import clsx from "clsx";
+import Link from "next/link";
 import { Check, Circle, Dot } from "lucide-react";
 import { Badge, Button, ButtonLink, Callout, Card, SectionLabel } from "@/components/ui";
 import { JourneyRail } from "@/components/journey-rail";
@@ -33,10 +33,14 @@ const STEPS = [
 
 export default function StatusPage() {
   const { lang } = useLang();
-  const { session, ready } = useSession();
-  const [stage, setStage] = useState(2);
+  const { session, ready, advanceStatus } = useSession();
 
+  // The stage lives with the claim, not in a component. A judge who advances
+  // the timeline and then navigates away should come back to where they left
+  // it, and a signed-in citizen should see the same stage on another device.
+  const stage = session.claim ? session.claim.stage : 2;
   const done = stage >= STEPS.length - 1;
+  const filed = Boolean(session.claim);
 
   return (
     <>
@@ -152,21 +156,40 @@ export default function StatusPage() {
           </SectionLabel>
           <p className="text-sm leading-relaxed text-ink-soft">
             {lang === "hi"
-              ? "यह स्थिति किसी सरकारी सिस्टम से जुड़ी नहीं है। असल में हर चरण में दिन लगते हैं; यहाँ आप उसे आगे बढ़ाकर पूरी समयरेखा देख सकते हैं।"
-              : "This status is not connected to any government system. In reality each stage takes days; here you can step it forward to see the whole timeline."}
+              ? "यह स्थिति किसी सरकारी सिस्टम से जुड़ी नहीं है — कोई EPFO API यहाँ नहीं बुलाया जाता। असल में हर चरण में दिन लगते हैं; यहाँ आप उसे आगे बढ़ाकर पूरी समयरेखा देख सकते हैं।"
+              : "This status is not connected to any government system — no EPFO API is called here. In reality each stage takes days; here you can step it forward to see the whole timeline."}
           </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              tone="secondary"
-              onClick={() => setStage((s) => Math.min(s + 1, STEPS.length - 1))}
-              disabled={done}
-            >
-              {lang === "hi" ? "अगला चरण" : "Advance one stage"}
+          {filed ? (
+            <Button tone="secondary" onClick={advanceStatus} disabled={done}>
+              {done
+                ? lang === "hi"
+                  ? "समयरेखा पूरी हुई"
+                  : "Timeline complete"
+                : lang === "hi"
+                  ? "अगला चरण"
+                  : "Advance one stage"}
             </Button>
-            <Button tone="quiet" onClick={() => setStage(2)}>
-              {lang === "hi" ? "रीसेट" : "Reset"}
-            </Button>
-          </div>
+          ) : (
+            <p className="text-sm leading-relaxed text-ink-mute">
+              {lang === "hi" ? (
+                <>
+                  यह एक उदाहरण है। अपनी असली समयरेखा देखने के लिए पहले{" "}
+                  <Link href="/preflight" className="font-medium text-indigo-600 hover:text-indigo-700">
+                    जाँच चलाकर दावा भरें
+                  </Link>
+                  ।
+                </>
+              ) : (
+                <>
+                  This is an example. To get a timeline of your own,{" "}
+                  <Link href="/preflight" className="font-medium text-indigo-600 hover:text-indigo-700">
+                    run the check and file a claim
+                  </Link>
+                  .
+                </>
+              )}
+            </p>
+          )}
         </Card>
 
         <ButtonLink href="/why" tone="secondary" full>

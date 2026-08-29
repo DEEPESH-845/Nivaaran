@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/context";
-import { Menu, X } from "lucide-react";
+import { useAuth } from "@/lib/auth/context";
+import { LogOut, Menu, User, X } from "lucide-react";
 
 /**
  * Persistent, unmissable disclosure. Required by the brief and by decency.
@@ -66,8 +67,9 @@ function Wordmark({ isDark = false }: { isDark?: boolean }) {
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const { lang, ui } = useLang();
+  const { user, signOut } = useAuth();
   const pathname = usePathname();
-  const onLanding = pathname === "/";
+  const router = useRouter();
 
   // Which route the menu was opened on. Deriving `open` from it closes the
   // menu on navigation without an effect that fires a cascading render.
@@ -90,12 +92,27 @@ export function Shell({ children }: { children: React.ReactNode }) {
     };
   }, [mobileMenuOpen]);
 
-  const navLinks = [
-    { href: "/story", label: lang === "hi" ? "अनुभव करें" : "Experience" },
-    { href: "/why", label: lang === "hi" ? "यह बेहतर क्यों है" : "Why this is better" },
-    { href: "/documents", label: lang === "hi" ? "दस्तावेज़ मिलान" : "Compare documents" },
-    { href: "/employer", label: lang === "hi" ? "नियोक्ताओं के लिए" : "For employers" },
-  ];
+  // Navigation follows the account, so nobody is shown a door they cannot
+  // open. This is presentation only: /employer and /governance are enforced
+  // server-side in their layouts, and typing the address changes nothing.
+  const navLinks = user
+    ? [
+        { href: "/dashboard", label: lang === "hi" ? "डैशबोर्ड" : "Dashboard" },
+        { href: "/preflight", label: lang === "hi" ? "मेरी जाँच" : "My check" },
+        { href: "/documents", label: lang === "hi" ? "दस्तावेज़" : "Documents" },
+        ...(user.role === "employer" || user.role === "admin"
+          ? [{ href: "/employer", label: lang === "hi" ? "पूर्व कर्मचारी" : "Leavers" }]
+          : []),
+        ...(user.role === "admin"
+          ? [{ href: "/governance", label: lang === "hi" ? "नियम प्रशासन" : "Governance" }]
+          : []),
+        { href: "/why", label: lang === "hi" ? "यह बेहतर क्यों है" : "Why this is better" },
+      ]
+    : [
+        { href: "/story", label: lang === "hi" ? "अनुभव करें" : "Experience" },
+        { href: "/why", label: lang === "hi" ? "यह बेहतर क्यों है" : "Why this is better" },
+        { href: "/documents", label: lang === "hi" ? "दस्तावेज़ मिलान" : "Compare documents" },
+      ];
 
   const headerClass = isCinematic 
     ? "bg-black/50 backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-black/40 border-white/10" 
@@ -134,16 +151,57 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </nav>
             <div className={`h-4 w-px ${isCinematic ? 'bg-white/20' : 'bg-line-strong'}`}></div>
             <LangToggle isDark={isCinematic} />
-            <Link 
-              href="/#start"
-              className={`inline-flex min-h-[40px] items-center justify-center rounded-ctl px-4 text-sm font-medium transition-transform active:scale-95 ${
-                isCinematic 
-                  ? "bg-white text-black hover:bg-gray-100" 
-                  : "bg-indigo-600 text-paper hover:bg-indigo-700"
-              }`}
-            >
-              {lang === "hi" ? "दावा जाँचें" : "Check a claim"}
-            </Link>
+            {user ? (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/account"
+                  className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-ctl px-3 text-sm font-medium transition-colors ${
+                    isCinematic ? "text-white/85 hover:text-white" : "text-ink-soft hover:text-ink"
+                  }`}
+                >
+                  <User aria-hidden className="size-4" strokeWidth={1.8} />
+                  {user.name.split(" ")[0]}
+                  {user.demo ? (
+                    <span className="rounded-full border border-caution-200 bg-caution-50 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-[0.05em] text-caution-700">
+                      {lang === "hi" ? "डेमो" : "Demo"}
+                    </span>
+                  ) : null}
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void signOut().then(() => router.push("/"))}
+                  className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-ctl border px-3 text-sm font-medium transition-colors ${
+                    isCinematic
+                      ? "border-white/20 text-white hover:bg-white/10"
+                      : "border-line-strong text-ink hover:bg-paper-sunk"
+                  }`}
+                >
+                  <LogOut aria-hidden className="size-4" strokeWidth={1.8} />
+                  {ui("signOut")}
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/login"
+                  className={`inline-flex min-h-[40px] items-center rounded-ctl px-3 text-sm font-medium transition-colors ${
+                    isCinematic ? "text-white/85 hover:text-white" : "text-ink-soft hover:text-ink"
+                  }`}
+                >
+                  {ui("signIn")}
+                </Link>
+                <Link
+                  href="/#start"
+                  className={`inline-flex min-h-[40px] items-center justify-center rounded-ctl px-4 text-sm font-medium transition-transform active:scale-95 ${
+                    isCinematic
+                      ? "bg-white text-black hover:bg-gray-100"
+                      : "bg-indigo-600 text-paper hover:bg-indigo-700"
+                  }`}
+                >
+                  {lang === "hi" ? "दावा जाँचें" : "Check a claim"}
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Mobile Toggle */}
@@ -178,17 +236,52 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 {link.label}
               </Link>
             ))}
-            <Link 
-              href="/#start"
-              className={`mt-4 flex w-full min-h-[48px] items-center justify-center rounded-ctl px-4 text-base font-medium transition-transform active:scale-95 ${
-                isCinematic 
-                  ? "bg-white text-black" 
-                  : "bg-indigo-600 text-paper"
-              }`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              {lang === "hi" ? "दावा जाँचें" : "Check a claim"}
-            </Link>
+            {user ? (
+              <>
+                <Link
+                  href="/account"
+                  className={`block py-3 font-medium border-b ${
+                    isCinematic ? "border-white/10 text-white/90" : "border-line text-ink"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {ui("account")} · {user.name.split(" ")[0]}
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    void signOut().then(() => router.push("/"));
+                  }}
+                  className={`mt-4 flex w-full min-h-[48px] items-center justify-center rounded-ctl border px-4 text-base font-medium ${
+                    isCinematic ? "border-white/25 text-white" : "border-line-strong text-ink"
+                  }`}
+                >
+                  {ui("signOut")}
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className={`block py-3 font-medium border-b ${
+                    isCinematic ? "border-white/10 text-white/90" : "border-line text-ink"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {ui("signIn")}
+                </Link>
+                <Link
+                  href="/#start"
+                  className={`mt-4 flex w-full min-h-[48px] items-center justify-center rounded-ctl px-4 text-base font-medium transition-transform active:scale-95 ${
+                    isCinematic ? "bg-white text-black" : "bg-indigo-600 text-paper"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {lang === "hi" ? "दावा जाँचें" : "Check a claim"}
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       )}
@@ -207,8 +300,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Link href="/why" className="font-medium text-indigo-600 hover:text-indigo-700">
               {lang === "hi" ? "यह बेहतर क्यों है" : "Why this is better"}
             </Link>
+            <Link href="/beyond" className="font-medium text-indigo-600 hover:text-indigo-700">
+              {lang === "hi" ? "PF से आगे" : "Beyond PF"}
+            </Link>
             <Link href="/sources" className="font-medium text-indigo-600 hover:text-indigo-700">
-              {lang === "hi" ? "स्रोत और सीमाएँ" : "Sources & limitations"}
+              {lang === "hi" ? "स्रोत, गोपनीयता और सीमाएँ" : "Sources, privacy & limits"}
             </Link>
             <Link href="/status" className="font-medium text-indigo-600 hover:text-indigo-700">
               {lang === "hi" ? "दावे की स्थिति" : "Claim status"}
@@ -216,9 +312,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Link href="/documents" className="font-medium text-indigo-600 hover:text-indigo-700">
               {lang === "hi" ? "दस्तावेज़ मिलान" : "Compare documents"}
             </Link>
-            <Link href="/employer" className="font-medium text-indigo-600 hover:text-indigo-700">
-              {lang === "hi" ? "नियोक्ताओं के लिए" : "For employers"}
-            </Link>
+            {!user || user.role !== "citizen" ? (
+              <Link href="/employer" className="font-medium text-indigo-600 hover:text-indigo-700">
+                {lang === "hi" ? "नियोक्ताओं के लिए" : "For employers"}
+              </Link>
+            ) : null}
             <Link href="/api" className="font-medium text-indigo-600 hover:text-indigo-700">
               {lang === "hi" ? "प्री-फ़्लाइट API" : "Preflight API"}
             </Link>

@@ -39,6 +39,66 @@ export const UI = {
   sev_blocker: { en: "Will stop your claim", hi: "आपका दावा रोक देगा" },
   sev_warning: { en: "Worth knowing", hi: "जानना ज़रूरी" },
   sev_info: { en: "Good news", hi: "अच्छी ख़बर" },
+
+  /* ------------------------------------------------------------- Accounts */
+  signIn: { en: "Sign in", hi: "साइन इन" },
+  signUp: { en: "Create account", hi: "खाता बनाएँ" },
+  signOut: { en: "Sign out", hi: "साइन आउट" },
+  email: { en: "Email address", hi: "ईमेल पता" },
+  password: { en: "Password", hi: "पासवर्ड" },
+  fullName: { en: "Your name", hi: "आपका नाम" },
+  showPassword: { en: "Show password", hi: "पासवर्ड दिखाएँ" },
+  hidePassword: { en: "Hide password", hi: "पासवर्ड छिपाएँ" },
+  signingIn: { en: "Signing you in…", hi: "साइन इन किया जा रहा है…" },
+  creatingAccount: { en: "Creating your account…", hi: "आपका खाता बनाया जा रहा है…" },
+  dashboard: { en: "Dashboard", hi: "डैशबोर्ड" },
+  account: { en: "Account", hi: "खाता" },
+  demoBadge: { en: "Demo · synthetic data", hi: "डेमो · काल्पनिक डेटा" },
+  resetDemo: { en: "Reset demo data", hi: "डेमो डेटा रीसेट करें" },
+  loading: { en: "Loading…", hi: "लोड हो रहा है…" },
+
+  /* ------------------------------------------- Error codes, made readable */
+  err_bad_credentials: {
+    en: "That email and password do not match an account.",
+    hi: "यह ईमेल और पासवर्ड किसी खाते से मेल नहीं खाते।",
+  },
+  err_rate_limited: {
+    en: "Too many attempts. Wait about a minute, then try again.",
+    hi: "बहुत ज़्यादा कोशिशें। लगभग एक मिनट रुककर फिर कोशिश करें।",
+  },
+  err_already_registered: {
+    en: "An account already exists for this email. Sign in instead.",
+    hi: "इस ईमेल से खाता पहले से है। इसके बजाय साइन इन करें।",
+  },
+  err_invalid_email: {
+    en: "That does not look like an email address.",
+    hi: "यह ईमेल पते जैसा नहीं लगता।",
+  },
+  err_too_short: {
+    en: "Use at least 10 characters. Length matters more than symbols.",
+    hi: "कम से कम 10 अक्षर लें। चिह्नों से ज़्यादा लंबाई मायने रखती है।",
+  },
+  err_too_long: {
+    en: "That password is too long. Use 200 characters or fewer.",
+    hi: "यह पासवर्ड बहुत लंबा है। 200 अक्षर या उससे कम लें।",
+  },
+  err_too_simple: {
+    en: "That password is too easy to guess. Try a few unrelated words.",
+    hi: "यह पासवर्ड बहुत आसानी से अंदाज़ा लग जाता है। कुछ असंबंधित शब्द आज़माएँ।",
+  },
+  err_looks_like_email: {
+    en: "Your password should not contain your email name.",
+    hi: "पासवर्ड में आपके ईमेल का नाम नहीं होना चाहिए।",
+  },
+  err_network: {
+    en: "We could not reach Nivaaran. Check your connection and try again.",
+    hi: "निवारण तक नहीं पहुँच सके। अपना कनेक्शन जाँचकर फिर कोशिश करें।",
+  },
+  err_generic: {
+    en: "Something went wrong at our end. Nothing has been submitted.",
+    hi: "हमारी तरफ़ कुछ गड़बड़ हुई। कुछ भी भेजा नहीं गया है।",
+  },
+  required: { en: "This is required.", hi: "यह ज़रूरी है।" },
 } as const satisfies Record<string, Bi>;
 
 export function pick(bi: Bi, lang: "en" | "hi"): string {
