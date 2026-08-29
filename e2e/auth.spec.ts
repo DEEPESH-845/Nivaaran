@@ -93,6 +93,37 @@ test.describe("signing in", () => {
   });
 });
 
+test.describe("switching between the two forms", () => {
+  // The guard sends a signed-out reader to /login with their destination in
+  // ?next=. Choosing "Create account" from there used to drop it, so they
+  // signed up and landed on the dashboard instead of where they were going.
+  test("the destination survives a move from sign-in to sign-up", async ({ page }) => {
+    await page.goto("/login?next=%2Fadhaar");
+    await page.locator("main").getByRole("link", { name: /^Create account$/ }).click();
+    await expect(page).toHaveURL(/\/signup\?next=%2Fadhaar/);
+
+    const email = `cross-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@example.com`;
+    await page.getByLabel(/Your name/i).fill("Cross Link");
+    await page.getByLabel(/Email address/i).fill(email);
+    await page.getByLabel("Password", { exact: true }).fill("a quiet civic instrument");
+    await page.getByRole("button", { name: /^Create account$/ }).click();
+
+    await expect(page).toHaveURL(/\/adhaar/);
+  });
+
+  test("and survives the move back the other way", async ({ page }) => {
+    await page.goto("/signup?next=%2Fdocuments");
+    await page.locator("main").getByRole("link", { name: /^Sign in$/ }).click();
+    await expect(page).toHaveURL(/\/login\?next=%2Fdocuments/);
+  });
+
+  test("with no destination, neither link invents one", async ({ page }) => {
+    await page.goto("/login");
+    await page.locator("main").getByRole("link", { name: /^Create account$/ }).click();
+    await expect(page).toHaveURL(/\/signup$/);
+  });
+});
+
 test.describe("access control", () => {
   test("a signed-out visitor is sent to sign in, and back afterwards", async ({ page }) => {
     await page.goto("/dashboard");

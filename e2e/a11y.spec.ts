@@ -79,7 +79,7 @@ async function signIn(page: Page, email: string) {
 }
 
 const PUBLIC = [
-  "/", "/why", "/sources", "/status", "/api", "/documents",
+  "/", "/why", "/sources", "/status", "/api", "/documents", "/adhaar",
   "/login", "/signup", "/forbidden", "/no-such-page",
 ];
 
@@ -159,6 +159,17 @@ test("no WCAG A/AA violations with every fix panel open", async ({ page }) => {
 test("no WCAG A/AA violations in Hindi", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Switch to Hindi/i }).click();
+  const { violations } = await scan(page);
+  expect(violations.map((v) => `${v.id}: ${v.nodes.length} node(s)`)).toEqual([]);
+});
+
+test("no WCAG A/AA violations on the specimen card itself", async ({ page }) => {
+  // The route in the list above renders the persona picker, so without this
+  // the card — the interactive part — was never scanned.
+  await page.goto("/adhaar");
+  await page.getByRole("button", { name: /left my job/i }).click();
+  await expect(page.getByRole("group", { name: /Specimen Aadhaar card/i })).toBeVisible();
+  await page.getByRole("button", { name: /Use a specimen number/i }).click();
   const { violations } = await scan(page);
   expect(violations.map((v) => `${v.id}: ${v.nodes.length} node(s)`)).toEqual([]);
 });
