@@ -15,7 +15,6 @@ import { useLang } from "@/lib/i18n/context";
 import { useSession } from "@/lib/state/session";
 import { SOURCES } from "@/lib/rules/sources";
 import { PERSONAS } from "@/content/personas";
-import { authenticateWithAadhaar } from "@/lib/auth/mock";
 import { useState } from "react";
 /* ============================================================
    The landing page is one continuous argument, told in eight acts.
@@ -160,16 +159,16 @@ export default function Landing() {
   const router = useRouter();
   const jd = SOURCES["epfo-jd-2025"];
 
-  const [authenticating, setAuthenticating] = useState<string | null>(null);
+  const [loading, setLoading] = useState<string | null>(null);
 
   async function choose(id: string) {
     const persona = PERSONAS.find((p) => p.id === id);
     if (!persona) return;
-    
-    setAuthenticating(id);
-    const user = await authenticateWithAadhaar(persona.id);
-    
-    // Live NPCI check before starting session
+
+    setLoading(id);
+
+    // The one thing that genuinely is a lookup: the bank directory. There is
+    // no identity step here — this journey needs no login and asserts none.
     const facts = structuredClone(persona.facts);
     const ifsc = facts.records.bank?.ifsc ?? facts.records.epfo.ifsc;
     if (ifsc) {
@@ -183,12 +182,13 @@ export default function Landing() {
           facts.records.epfo.ifscValid = data.valid;
           if (!data.valid && data.retiredTo) facts.records.epfo.ifscRetiredTo = data.retiredTo;
         }
-      } catch (e) {
-        // Fallback on error
+      } catch {
+        // Directory unreachable. The engine still validates the IFSC format
+        // itself, so the check degrades rather than fails.
       }
     }
-    
-    begin(persona.id, facts, user.token);
+
+    begin(persona.id, facts);
     router.push("/check");
   }
 
@@ -240,7 +240,11 @@ export default function Landing() {
                     strokeWidth={1.6}
                   />
                   <span className="flex-1 text-md font-medium leading-snug text-ink">
-                    {authenticating === p.id ? (lang === "hi" ? "सत्यापित हो रहा है..." : "Authenticating...") : `"${t(p.saying)}"`}
+                    {loading === p.id
+                      ? lang === "hi"
+                        ? "रिकॉर्ड खोला जा रहा है…"
+                        : "Loading record…"
+                      : `"${t(p.saying)}"`}
                   </span>
                   <span className="flex items-center justify-between gap-2 border-t border-line-soft pt-3">
                     <span className="meta text-ink-faint">

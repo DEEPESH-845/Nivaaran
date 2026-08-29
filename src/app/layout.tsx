@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Instrument_Serif, Inter, Noto_Sans_Devanagari } from "next/font/google";
+import { AuthProvider } from "@/lib/auth/context";
 import { LangProvider } from "@/lib/i18n/context";
 import { SessionProvider } from "@/lib/state/session";
 import { SmoothScrollProvider } from "@/components/providers/SmoothScrollProvider";
@@ -46,11 +47,13 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${instrument.variable} ${devanagari.variable}`}>
       <body>
         <LangProvider>
-          <SessionProvider>
-            <SmoothScrollProvider>
-              <Shell>{children}</Shell>
-            </SmoothScrollProvider>
-          </SessionProvider>
+          <AuthProvider>
+            <SessionProvider>
+              <SmoothScrollProvider>
+                <Shell>{children}</Shell>
+              </SmoothScrollProvider>
+            </SessionProvider>
+          </AuthProvider>
         </LangProvider>
       </body>
     </html>

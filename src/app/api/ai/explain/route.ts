@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
+import { fail, ok, readJson } from "@/lib/api/respond";
 import { aiConfigured, structured } from "@/lib/ai/client";
-import { allow, clientKey } from "@/lib/ai/limit";
+import { clientKey, rateLimit } from "@/lib/security/ratelimit";
 
 const Body = z.object({
   text: z.string().min(1).max(1500),
@@ -24,20 +24,19 @@ Hard rules:
 - If you cannot simplify without changing the meaning, return the input unchanged.`;
 
 export async function POST(request: Request) {
-  const parsed = Body.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) {
-    return NextResponse.json({ error: "invalid_request" }, { status: 422 });
-  }
+  // Bounded before it is parsed; this endpoint is public.
+  const parsed = Body.safeParse(await readJson(request, 8 * 1024));
+  if (!parsed.success) return fail("INVALID_REQUEST");
 
-  if (!allow(clientKey(request))) {
-    return NextResponse.json(
+  if (!rateLimit("ai", clientKey(request)).ok) {
+    return ok(
       { plain: parsed.data.text, resolvedBy: "unavailable", reason: "rate_limited" },
       { status: 429 },
     );
   }
 
   if (!aiConfigured()) {
-    return NextResponse.json({
+    return ok({
       plain: parsed.data.text,
       resolvedBy: "unavailable",
       reason: "not_configured",
@@ -53,14 +52,14 @@ export async function POST(request: Request) {
 
   if (!result.ok) {
     // Never fail loudly: the original wording is already correct, just denser.
-    return NextResponse.json({
+    return ok({
       plain: parsed.data.text,
       resolvedBy: "unavailable",
       reason: result.reason,
     });
   }
 
-  return NextResponse.json({
+  return ok({
     plain: result.data.plain,
     resolvedBy: "model",
     model: result.model,
