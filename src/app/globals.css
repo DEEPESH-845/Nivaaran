@@ -108,6 +108,11 @@
   --dur-slow:      680ms;
   --dur-cinematic: 1100ms;
 
+  /* The specimen card on /adhaar. It is an object on a desk, not a panel on a
+     page: one tight contact shadow and one soft cast, and nothing behind it.
+     There used to be a lit WebGL room back there instead. */
+  --shadow-card-object: 0 1px 2px oklch(0.23 0.021 258 / 0.10),
+                        0 14px 30px -18px oklch(0.23 0.021 258 / 0.34);
 }
 
 /* Fluid display size for hero moments */
@@ -290,6 +295,11 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     font-feature-settings: "cv05" 1, "cv08" 1, "ss03" 1;
+    /* Inherited, and deliberately `break-word` rather than `break-all`: an
+       IFSC, a rule id, a UAN or a pasted URL breaks only when it genuinely
+       cannot fit its line, and ordinary prose is never broken mid-word. This
+       is the floor under every card, not a substitute for laying one out. */
+    overflow-wrap: break-word;
   }
 
   /* Visible focus everywhere. Never removed. */
@@ -357,6 +367,17 @@
   to   { opacity: 1; transform: none; }
 }
 .animate-rise { animation: rise 0.32s var(--ease-out-soft) both; }
+
+/* The card's arrival on /adhaar. Eight pixels, once, on the compositor.
+   Neutered by the global reduced-motion rule above, which parks it at its
+   finished state rather than leaving it at opacity 0. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes card-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .card-enter { animation: card-enter var(--dur-medium) var(--ease-entry) both; }
+}
 
 /* ============================================================
    NARRATIVE LAYER

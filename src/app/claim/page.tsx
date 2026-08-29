@@ -6,6 +6,7 @@ import { Landmark, Lock, ShieldAlert } from "lucide-react";
 import { Button, Callout, Card, SectionLabel } from "@/components/ui";
 import { JourneyRail } from "@/components/journey-rail";
 import { preflight } from "@/lib/rules/engine";
+import { formatDate } from "@/lib/date";
 import { useLang } from "@/lib/i18n/context";
 import { useSession } from "@/lib/state/session";
 
@@ -44,7 +45,7 @@ export default function ClaimPage() {
   const rows = [
     { k: { en: "Claim type", hi: "दावे का प्रकार" }, v: lang === "hi" ? "अंतिम निपटान (फ़ॉर्म 19 और 10C)" : "Final settlement (Form 19 & 10C)" },
     { k: { en: "Name", hi: "नाम" }, v: facts.records.epfo.name },
-    { k: { en: "Date of birth", hi: "जन्मतिथि" }, v: facts.records.epfo.dob },
+    { k: { en: "Date of birth", hi: "जन्मतिथि" }, v: formatDate(facts.records.epfo.dob) },
     { k: { en: "Bank account", hi: "बैंक खाता" }, v: `•••• ${facts.records.epfo.accountLast4}` },
     { k: { en: "IFSC", hi: "IFSC" }, v: facts.records.bank?.ifsc ?? facts.records.epfo.ifsc },
     { k: { en: "Amount", hi: "राशि" }, v: inr(facts.claimAmount) },

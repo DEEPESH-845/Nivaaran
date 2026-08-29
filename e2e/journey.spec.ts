@@ -243,7 +243,10 @@ test.describe("the document pre-check", () => {
   });
 
   test("a document that cannot be read is a quiet line, not a dead end", async ({ page }) => {
+    // Both readers gone: the model, and the direct read of the specimen we
+    // ship. Blocking only the model now leaves a sample perfectly readable.
     await page.route("**/api/ai/extract", (route) => route.abort());
+    await page.route("**/samples/**", (route) => route.abort());
     await startAs(page, /left my job/i);
     await answerQuestions(page);
     await intoDocuments(page);
@@ -273,6 +276,7 @@ test.describe("the document pre-check", () => {
     // The slot promises exactly this. Until now there was nothing below to
     // type into: the comparison only rendered once something had been read.
     await page.route("**/api/ai/extract", (route) => route.abort());
+    await page.route("**/samples/**", (route) => route.abort());
     await startAs(page, /left my job/i);
     await answerQuestions(page);
     await intoDocuments(page);
