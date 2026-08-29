@@ -198,7 +198,7 @@ test.describe("the document pre-check", () => {
 
     // The identity name matches EPFO after normalisation; the passbook name
     // does not — and only the covered comparisons count as blockers.
-    await expect(page.getByText(/1 of these will stop your claim/i)).toBeVisible();
+    await expect(page.getByText(/1 will stop your claim/i)).toBeVisible();
 
     // The two documents disagree with each other, which EPFO never checks.
     await expect(page.getByText(/Your two documents disagree with each other/i)).toBeVisible();
@@ -220,18 +220,19 @@ test.describe("the document pre-check", () => {
     await intoDocuments(page);
     await page.getByRole("button", { name: /Bank passbook — Rajesh/i }).click();
 
-    await expect(page.getByText(/Nothing we read will stop your claim/i)).toBeVisible();
+    await expect(page.getByText(/Nothing here will stop your claim/i)).toBeVisible();
     await expect(page.getByText(/it sends the money somewhere else/i)).toBeVisible();
   });
 
-  test("using the values changes the verdict", async ({ page }) => {
+  test("using the values changes the verdict, in one press", async ({ page }) => {
     await stub(page, { identity: IDENTITY });
     await startAs(page, /left my job/i);
     await answerQuestions(page);
     await intoDocuments(page);
     await page.getByRole("button", { name: /Identity record — Rajesh/i }).click();
-    await page.getByRole("button", { name: /Use these values/i }).click();
-    await page.getByRole("link", { name: /See what this changes/i }).click();
+    // One button, not "use these" followed by "see what this changes": saving
+    // the values and seeing what they change were always one intention.
+    await page.getByRole("button", { name: /Use these and re-run my check/i }).click();
 
     await expect(page).toHaveURL(/\/preflight/);
     const heading = page.getByRole("heading", { level: 1 });
@@ -252,6 +253,51 @@ test.describe("the document pre-check", () => {
     await page.getByRole("button", { name: /Back to the check/i }).click();
     await page.getByRole("button", { name: /Check my claim/i }).click();
     await expect(page.getByRole("heading", { level: 1 })).toContainText(/will stop this claim/i);
+  });
+
+  test("a reading puts the reader on the comparison, not on a badge", async ({ page }) => {
+    // The answer renders below the fold. Without this the slot shows a badge
+    // and the comparison the reader came for stays off-screen.
+    await stub(page, { identity: IDENTITY });
+    await startAs(page, /left my job/i);
+    await answerQuestions(page);
+    await intoDocuments(page);
+    await page.getByRole("button", { name: /Identity record — Rajesh/i }).click();
+
+    const comparison = page.getByRole("heading", { name: /What we read, against what EPFO has/i });
+    await expect(comparison).toBeFocused();
+    await expect(comparison).toBeInViewport();
+  });
+
+  test("when the reader fails you can still type the values in", async ({ page }) => {
+    // The slot promises exactly this. Until now there was nothing below to
+    // type into: the comparison only rendered once something had been read.
+    await page.route("**/api/ai/extract", (route) => route.abort());
+    await startAs(page, /left my job/i);
+    await answerQuestions(page);
+    await intoDocuments(page);
+    await page.getByRole("button", { name: /Identity record — Rajesh/i }).click();
+    await expect(page.getByText(/isn't available right now/i).last()).toBeVisible();
+
+    await page.getByRole("button", { name: /Type the values in instead/i }).click();
+    await page.getByLabel(/^Identity document$/).first().fill("Rajesh K Sharma");
+    await page.getByRole("button", { name: /Use these and re-run my check/i }).click();
+
+    // Typed by hand, and it reaches the engine exactly as a reading would.
+    await expect(page).toHaveURL(/\/preflight/);
+    await expect(
+      page.getByRole("heading", { name: /name in EPFO does not match your Aadhaar/i }),
+    ).toHaveCount(0);
+  });
+
+  test("a document read alone names the one still missing", async ({ page }) => {
+    await stub(page, { identity: IDENTITY });
+    await startAs(page, /left my job/i);
+    await answerQuestions(page);
+    await intoDocuments(page);
+    await page.getByRole("button", { name: /Identity record — Rajesh/i }).click();
+
+    await expect(page.getByText(/passbook carries the other two/i)).toBeVisible();
   });
 
   test("landing on /documents with no session asks whose record to compare", async ({ page }) => {
@@ -401,6 +447,29 @@ test.describe("language", () => {
     await page.getByRole("button", { name: /मेरा दावा जाँचें/ }).click();
     // Domain content, not navigation, must be translated too.
     await expect(page.getByRole("heading", { name: /नाम आधार से मेल नहीं खाता/ })).toBeVisible();
+  });
+
+  test("the story's scroll captions switch language, not just the chrome", async ({ page }) => {
+    // The captions were written into the component as English strings and
+    // resolved once, so the toggle moved the navbar and left the story alone.
+    await page.goto("/story");
+    await expect(page.getByRole("heading", { name: /Meet Arjun/i })).toBeVisible();
+
+    await page.getByRole("button", { name: /Switch to Hindi/i }).click();
+    await expect(page.getByRole("heading", { name: /मिलिए अर्जुन से/ })).toBeVisible();
+    await expect(page.getByText(/वह बस अपने PF का काम निपटाना चाहता है/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Meet Arjun/i })).toHaveCount(0);
+  });
+
+  test("the still story switches language too", async ({ page }) => {
+    // A reader who asked for stillness gets a different component entirely,
+    // with its own copy and its own alt text.
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/story");
+    await page.getByRole("button", { name: /Switch to Hindi/i }).click();
+
+    await expect(page.getByRole("heading", { name: /मिलिए अर्जुन से/ })).toBeVisible();
+    await expect(page.getByAltText(/अर्जुन घर पर/)).toBeVisible();
   });
 
   test("the language choice survives a reload", async ({ page }) => {
