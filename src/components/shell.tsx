@@ -143,7 +143,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             content, and at max-w-5xl the desktop navigation needed 1052px of
             a 992px line, which is why the brand sat flush against "Dashboard"
             and every two-word label wrapped onto a second line. */}
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-8 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8 xl:gap-8">
           <div className="shrink-0">
             <Wordmark isDark={isCinematic} />
           </div>
@@ -221,12 +221,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Tablet + mobile: the drawer, not a squeezed desktop bar. */}
-          <div className="ml-auto flex shrink-0 items-center gap-3 xl:hidden">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3 xl:hidden">
             <LangToggle isDark={isCinematic} />
             <ThemeToggle isDark={isCinematic} />
             <button
               type="button"
-              className={`-mr-2 inline-flex size-11 items-center justify-center rounded-md transition-colors ${
+              className={`-mr-1.5 inline-flex size-11 shrink-0 items-center justify-center rounded-md transition-colors ${
                 isCinematic ? "text-white hover:bg-white/10" : "text-ink hover:bg-paper-sunk"
               }`}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

@@ -393,7 +393,7 @@ for (const theme of ["light", "dark"] as const) {
 
       // A surface with its own overlay background, only ever seen open.
       await page.goto("/");
-      await page.getByRole("button", { name: /Toggle menu/i }).click();
+      await page.getByRole("button", { name: /Open menu/i }).click();
       await expect(page.getByRole("link", { name: /Experience/i }).first()).toBeVisible();
       await auditPage(page, `${theme} mobile menu`, findings);
 
