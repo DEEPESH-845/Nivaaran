@@ -37,19 +37,21 @@ pnpm lint         # eslint
 | `src/lib/rules/` | The engine — types, sources, the 9 rules, `engine.ts`, `apply.ts`, `roster.ts` |
 | `src/lib/match/` | Name + date reconciliation, token diff, document reconciliation |
 | `src/lib/ai/` | Server-only OpenAI wrapper, rejection decoder, extraction schema + scrub, rate limit |
+| `src/lib/adhaar/` | Specimen-card derivations + the Verhoeff checksum. Pure, no I/O |
 | `src/lib/i18n/` | UI chrome strings + language store |
 | `src/lib/state/` | Session store (`useSyncExternalStore`, no state library) |
 | `src/content/` | Synthetic personas, the employer roster, friction analysis as data |
 | `src/components/` | Shared UI (`ui.tsx`), journey components |
 | `src/components/motion/` | `Reveal`, `useSceneProgress`, `useCanvas` — the motion primitives |
 | `src/components/scenes/` | The landing narrative's six scenes |
-| `src/app/` | landing → check → documents → preflight → claim/done/status, why/sources/api/employer |
+| `src/components/adhaar/` | The specimen card: DOM faces, the interaction stage, the lazy WebGL studio |
+| `src/app/` | landing → check → documents → preflight → claim/done/status, why/sources/api/employer, adhaar |
 | `src/app/api/` | `preflight`, `ai/decode`, `ai/explain`, `ai/extract` |
 | `public/samples/` | The three synthetic specimen documents (SVG) |
 
 ---
 
-## 📐 Three Surfaces in One Repo
+## 📐 Four Surfaces in One Repo
 
 Keep these straight; the rules differ:
 
@@ -59,7 +61,10 @@ Keep these straight; the rules differ:
 2. **The Landing Page** (`/`)
    It is an argument. It has to make a stranger — a judge, a journalist, an EPFO official — understand the problem, why the current approach fails, and what changes, in one scroll. It is allowed to be cinematic. *It is not allowed to be slow, inaccessible, or untrue.*
 
-3. **The Employer Lens** (`/employer`) & **The API Page** (`/api`)
+3. **The Specimen Card** (`/adhaar`)
+   It is the one *object* in the product. Everywhere else the record is a row in a table; here it is the card a citizen actually holds, tiltable and lit, with the same name and date of birth the engine compares. It is allowed to be immersive — it is the only surface that is. *It is not allowed to be a counterfeit, to cost anything on a slow connection, or to hold a single fact a keyboard reader cannot reach.*
+
+4. **The Employer Lens** (`/employer`) & **The API Page** (`/api`)
    They are proof that the engine is not a website. Both are quiet and dense like the journey. `/employer` is a work queue for an HR generalist who does not know a former employee is blocked on them — every row is a person, every item is minutes. `/documents` reads documents and **compares** them; it never says *verify*. Its voice is the trap: a finding title says "your date of exit", which is addressed to the member. Employer-owned work must be phrased from `employerFix`, and member-owned work must be visibly quoted.
 
 ---
@@ -78,6 +83,9 @@ Keep these straight; the rules differ:
 10. **Owning a finding is not enough to show it to an employer.** A finding reaches the employer's queue only when `owner === "employer"` *and* it carries an `employerFix` with real steps. Naming an owner we have no instructions for is the dead end `/employer` exists to remove — and employer steps stay at the level `SOURCES` supports, never a click path we could not reach epfindia.gov.in to verify.
 11. **Never imply this is official.** The "independent prototype / synthetic data" disclosure stays on every page.
 12. **Never invent a number.** Every figure on the landing page traces to `docs/RESEARCH.md` or `SOURCES`. 7.96 crore and 1.74 crore are published figures. 796 and 174 marks are those figures ÷ 100,000. The 2,880× ratio is 20 days ÷ 10 minutes. If you cannot derive it, do not draw it.
+
+13. **An identifier a person types stays in the browser.** `/adhaar` accepts a 12-digit Aadhaar number because a specimen card without one teaches nothing, and it validates it with the real Verhoeff checksum. It then does exactly four things with it: renders it masked to the last four, reveals it on an explicit press, validates it, and forgets it on reload. It is **never** written to `Facts`, never put in `localStorage`, never sent to any route, and never near `/api/ai/extract` — rule 9 governs what the *model* may return, this governs what a *person* may hand us, and both answers are the same. `Facts` carries `name` and `dob` from this screen and nothing else: gender, city and the number are presentational, because no rule reads them and `preflight` has no business seeing a field it cannot evaluate.
+14. **WebGL is an upgrade, never a requirement.** It is allowed on `/adhaar` and nowhere else. The card is complete before three.js exists — real DOM text, CSS `preserve-3d`, pointer and keyboard tilt, both faces — and the WebGL studio behind it only ever adds light. Non-negotiable, all four: the `three` chunk is dynamically imported so it is absent from first load; it is gated on `saveData`, `effectiveType`, `deviceMemory` and reduced-motion through one pure `shouldEnhance()` that has unit tests; its environment is generated procedurally so it fetches **no** textures; and a visible control turns it off for good. Blocking the chunk entirely must leave every detail readable and every control working — there is an e2e test that does precisely that.
 
 ---
 
@@ -127,7 +135,8 @@ Three primitives, all in `src/components/motion/reveal.tsx`:
 - **Animate `transform` and `opacity`.** Not `top`/`left`/`width`/`box-shadow`.
 - **The hidden state of a reveal lives behind `@media (prefers-reduced-motion: no-preference)`** and is undone under `@media (scripting: none)`, so a reader who has asked for stillness — or whose script never runs — never gets a blank page.
 - **rAF loops run only while the scene intersects.** Nothing animates off screen.
-- **No scroll hijacking, no custom cursor, no WebGL.** All three were considered and rejected: they cost touch and keyboard parity and buy nothing this argument needs.
+- **No scroll hijacking and no custom cursor, anywhere.** Both were considered and rejected: they cost touch and keyboard parity and buy nothing this argument needs.
+- **No WebGL in the narrative.** The eight beats are canvas-2d and CSS, and stay that way — beat 03 and beat 05 are `useCanvas`, not scenes. WebGL lives on `/adhaar` alone, under rule 14, where it is an upgrade over a page that is already finished without it. This is narrower than it used to read: rule 8 leaves the dependency list open, and this line is about *where* a renderer earns its parity cost, not about which libraries exist.
 
 ---
 
