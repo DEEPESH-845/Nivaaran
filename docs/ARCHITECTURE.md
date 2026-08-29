@@ -13,11 +13,19 @@ Practical notes on how this is put together and what would have to change for it
 | Styling | **Tailwind v4** with `@theme` tokens | Tokens live in CSS custom properties, so the palette is one file and auditable |
 | Validation | **Zod v4** | The public API's contract is the schema |
 | AI | **OpenAI** (`gpt-5.x`, structured outputs) | Server-side only; never decides eligibility |
-| Unit tests | **Vitest** | 43 tests over the engine, the matchers, the decoder and the friction maths |
-| E2E / a11y | **Playwright** + **axe-core** | 43 tests across mobile and desktop projects |
-| Hosting | **Vercel** | Static pages on the CDN, three function routes |
+| Accounts | **`node:crypto`** — scrypt, random tokens | Password hashing and sessions with no dependency and no native build step |
+| Persistence | **A JSON document**, flushed to disk | A handful of synthetic accounts; a Postgres dependency would buy nothing this build can use |
+| Unit tests | **Vitest** | 196 tests over the engine, the matchers, the decoder, the claim state machine, case ownership, the password policy and the redirect filter |
+| E2E / a11y | **Playwright** + **axe-core** | Journey, authorization, mobile and Hindi, across mobile and desktop projects |
+| Hosting | **Vercel** | Static pages on the CDN, the rest as functions |
 
-**Not used, deliberately:** no state library (two `useSyncExternalStore` stores), no component library, no database, no auth, no ORM, no queue, no container. Nothing here needed one.
+**Not used, deliberately:** no state library (`useSyncExternalStore` stores), no
+component library, no ORM, no queue, no container, no auth SDK, no JWT. Nothing
+here needed one.
+
+**Added since the first build:** accounts. The original version had none, which
+was right for a two-day prototype and wrong the moment a citizen's check had to
+survive a second device. See §11.
 
 ---
 
@@ -247,8 +255,11 @@ reviewRoster(leavers)          pure — no I/O, no clock
   → clear
 ```
 
-No second rule set, no employer-specific record type, no login and no data
-intake — the roster is a synthetic fixture and the page says so. `Finding`
+No second rule set and no employer-specific record type — the roster is a fixed
+synthetic fixture, not an intake, and the page says so. The route itself is
+behind `requireRole(["employer", "admin"])`: an employer console holds an
+employer's view of their former staff, and a citizen account has no business
+there even when the data behind it is invented. `Finding`
 gains one optional field, `employerFix`, on the three rules that can be
 employer-owned: the citizen's steps ("sign in with your UAN") are wrong advice
 for an HR desk, and domain copy stays with the rule rather than migrating into
@@ -335,3 +346,70 @@ Honest list, roughly in order of difficulty:
 3. **Rule governance.** Re-verification dates are now enforced in CI (§8). What is still missing is the human half: a named domain owner, a review process, and a changelog per rule.
 4. **A shared rate limiter and real observability** in place of the in-process `Map`.
 5. **Legal review of every rule** before anyone acts on it. Today the product handles this by showing its sources and its confidence and telling the citizen when we are unsure.
+
+---
+
+## 11. Accounts, sessions and access
+
+The first build had no login and no server state, and said so everywhere. That
+was the right call for the journey it shipped — *no login, no OTP* is half the
+product's argument — and the wrong one for a check a person is meant to come
+back to. Accounts were added **alongside** the anonymous journey, never in
+front of it: every page of the citizen flow still works signed out, and signing
+in mid-journey adopts the anonymous case rather than discarding it.
+
+### Sessions
+
+```
+browser                     server
+-------                     ------
+HttpOnly cookie             db.sessions[sha256(token)]
+  nivaaran_session=<token>    -> { userId, createdAt, expiresAt }
+```
+
+The browser holds 32 random bytes. The server holds only their SHA-256, so a
+dump of the store yields nothing a person can sign in with. `SameSite=Lax`,
+`Secure` in production, seven-day expiry, rolled forward when a session is more
+than a day old.
+
+There is no JWT here on purpose. A stateless bearer token cannot be revoked
+before it expires, and "sign out everywhere, now" is not a feature to trade
+away in a product about money stuck in a government process.
+
+### Passwords
+
+`scrypt` from the standard library, salted per account, stored in a
+self-describing form (`scrypt$salt$hash`) so the cost parameters can be raised
+later without invalidating anyone. A login for an address that does not exist
+still runs one KDF against a throwaway hash, so a miss and a wrong password
+cost the same wall-clock time — otherwise the endpoint is an account
+enumeration oracle with a stopwatch.
+
+### Authorization
+
+Three roles: `citizen`, `employer`, `admin`. Enforced by `requireUser` and
+`requireRole` on the server, inside the layout of every protected route, before
+any user-owned data is read.
+
+`src/proxy.ts` also redirects a visitor with no session cookie, but it is a
+convenience and is documented as one: it cannot tell whether a cookie is valid,
+whose it is, or what role it carries. If the file were deleted, nothing would
+become reachable that is not reachable now.
+
+### Ownership
+
+There is no `getCase(id)` in this codebase, and that is deliberate. Every
+function in `lib/claims/repo.ts` takes the authenticated user's id as its first
+argument, so the client never names an object and there is no insecure direct
+object reference to find. The shape that produces the bug is one we made
+impossible to write.
+
+### What would have to change for this to be real
+
+| Today | Production |
+|---|---|
+| JSON document flushed to disk | A real database. `lib/db/store.ts` is the only file that knows |
+| In-process rate limiter | A shared store. `lib/security/ratelimit.ts` is the only file that knows |
+| No password reset | Mail delivery first; a reset flow that sends nothing is worse than none |
+| Synthetic member record | The real record, read with the citizen's consent |
+| One instance | Sessions already live server-side, so horizontal scaling needs only the store swap |

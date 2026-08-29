@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
+import { fail, ok, readJson } from "@/lib/api/respond";
 import { aiConfigured, structuredVision } from "@/lib/ai/client";
 import {
   EXTRACT_INSTRUCTION,
@@ -7,7 +7,7 @@ import {
   ExtractSchema,
   scrub,
 } from "@/lib/ai/extract";
-import { allow, clientKey } from "@/lib/ai/limit";
+import { clientKey, rateLimit } from "@/lib/security/ratelimit";
 
 /**
  * Document pre-check.
@@ -21,7 +21,12 @@ import { allow, clientKey } from "@/lib/ai/limit";
  */
 
 const MAX_BYTES = 8 * 1024 * 1024;
-const VISION_PER_MINUTE = 5;
+/**
+ * The wire ceiling, above the decoded ceiling: base64 costs about a third
+ * more, plus the JSON envelope. Enforced before the body is parsed, because
+ * `request.json()` on a public endpoint will buffer whatever it is handed.
+ */
+const MAX_WIRE_BYTES = Math.ceil(MAX_BYTES * 1.4);
 
 const Body = z.object({
   image: z
@@ -37,17 +42,24 @@ function decodedBytes(dataUrl: string): number {
 }
 
 export async function POST(request: Request) {
-  const parsed = Body.safeParse(await request.json().catch(() => null));
+  const body = await readJson(request, MAX_WIRE_BYTES);
+  if (body === null) return fail("PAYLOAD_TOO_LARGE");
+
+  const parsed = Body.safeParse(body);
+  // The regex above already fixed the MIME type to one of three image types;
+  // a client-declared content type is never trusted here.
   if (!parsed.success || decodedBytes(parsed.data.image) > MAX_BYTES) {
-    return NextResponse.json({ error: "invalid_request" }, { status: 422 });
+    return fail("INVALID_REQUEST");
   }
 
-  if (!allow(`vision:${clientKey(request)}`, VISION_PER_MINUTE)) {
-    return NextResponse.json({ ok: false, reason: "rate_limited" }, { status: 429 });
+  // Vision costs an order of magnitude more than a text call, so it carries
+  // its own, tighter budget under its own bucket.
+  if (!rateLimit("vision", clientKey(request)).ok) {
+    return ok({ ok: false, reason: "rate_limited" }, { status: 429 });
   }
 
   if (!aiConfigured()) {
-    return NextResponse.json({ ok: false, reason: "not_configured" });
+    return ok({ ok: false, reason: "not_configured" });
   }
 
   const result = await structuredVision(
@@ -59,10 +71,10 @@ export async function POST(request: Request) {
   );
 
   if (!result.ok) {
-    return NextResponse.json({ ok: false, reason: result.reason });
+    return ok({ ok: false, reason: result.reason });
   }
 
-  return NextResponse.json(
+  return ok(
     {
       ok: true,
       docType: result.data.docType,

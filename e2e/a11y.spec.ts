@@ -69,13 +69,69 @@ async function intoOpenReader(page: Page) {
   await expect(page.getByRole("button", { name: /Use these values/i })).toBeVisible();
 }
 
-for (const path of ["/", "/why", "/sources", "/status", "/api", "/employer", "/documents"]) {
+/** Sign in, so an authenticated page can be scanned as itself. */
+async function signIn(page: Page, email: string) {
+  await page.goto("/login");
+  await page.getByLabel(/Email address/i).fill(email);
+  await page.getByLabel("Password", { exact: true }).fill("NivaaranDemo2026!");
+  await page.getByRole("button", { name: /^Sign in$/ }).click();
+  await expect(page).toHaveURL(/\/dashboard/);
+}
+
+const PUBLIC = [
+  "/", "/why", "/sources", "/status", "/api", "/documents",
+  "/login", "/signup", "/forbidden", "/no-such-page",
+];
+
+for (const path of PUBLIC) {
   test(`no WCAG A/AA violations on ${path}`, async ({ page }) => {
     await page.goto(path);
     const { violations } = await scan(page);
     expect(violations.map((v) => `${v.id}: ${v.nodes.length} node(s)`)).toEqual([]);
   });
 }
+
+/**
+ * Scanned signed in, as the account that owns them.
+ *
+ * `/employer` used to sit in the public list above, and once it grew an
+ * authorization boundary that scan was silently auditing the sign-in page
+ * instead. An authenticated surface has to be scanned authenticated.
+ */
+const PRIVATE: [string, string][] = [
+  ["/dashboard", "demo@nivaaran.app"],
+  ["/account", "demo@nivaaran.app"],
+  ["/employer", "employer@nivaaran.app"],
+  ["/governance", "admin@nivaaran.app"],
+];
+
+for (const [path, email] of PRIVATE) {
+  test(`no WCAG A/AA violations on ${path}, signed in`, async ({ page }) => {
+    await signIn(page, email);
+    await page.goto(path);
+    await expect(page).not.toHaveURL(/\/login|\/forbidden/);
+    const { violations } = await scan(page);
+    expect(violations.map((v) => `${v.id}: ${v.nodes.length} node(s)`)).toEqual([]);
+  });
+}
+
+test("no WCAG A/AA violations on the dashboard in Hindi", async ({ page }) => {
+  await signIn(page, "demo@nivaaran.app");
+  await page.getByRole("button", { name: /Switch to Hindi/i }).first().click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "hi");
+  const { violations } = await scan(page);
+  expect(violations.map((v) => `${v.id}: ${v.nodes.length} node(s)`)).toEqual([]);
+});
+
+test("no WCAG A/AA violations on sign-in with an error showing", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel(/Email address/i).fill("demo@nivaaran.app");
+  await page.getByLabel("Password", { exact: true }).fill("definitely-not-it");
+  await page.getByRole("button", { name: /^Sign in$/ }).click();
+  await expect(page.locator("form").getByRole("alert")).toBeVisible();
+  const { violations } = await scan(page);
+  expect(violations.map((v) => `${v.id}: ${v.nodes.length} node(s)`)).toEqual([]);
+});
 
 test("no WCAG A/AA violations on the question flow", async ({ page }) => {
   await page.goto("/");
@@ -161,10 +217,8 @@ test("the skip link is the first thing a keyboard user reaches", async ({ page }
   await expect(page.getByRole("link", { name: /Skip to main content/i })).toBeFocused();
 });
 
-test("every interactive target meets the 44px minimum on mobile", async ({ page }) => {
-  test.skip(test.info().project.name !== "mobile", "mobile viewport only");
-  await intoJourney(page);
-  // Scoped to our own chrome so the Next dev-tools overlay is not measured.
+/** Scoped to our own chrome so the Next dev-tools overlay is not measured. */
+async function undersizedTargets(page: Page): Promise<string[]> {
   const controls = await page
     .locator("header, main, footer")
     .locator("button:visible, a:visible")
@@ -173,8 +227,33 @@ test("every interactive target meets the 44px minimum on mobile", async ({ page 
   for (const c of controls) {
     const box = await c.boundingBox();
     if (box && box.height < 44 && box.width < 44) {
-      undersized.push(`${(await c.textContent())?.trim().slice(0, 40)} — ${box.width}×${box.height}`);
+      undersized.push(`${(await c.textContent())?.trim().slice(0, 40)} — ${box.width}x${box.height}`);
     }
   }
-  expect(undersized).toEqual([]);
+  return undersized;
+}
+
+test("every interactive target meets the 44px minimum on mobile", async ({ page }) => {
+  test.skip(test.info().project.name !== "mobile", "mobile viewport only");
+  await intoJourney(page);
+  expect(await undersizedTargets(page)).toEqual([]);
+});
+
+test("sign-in is thumb-sized on mobile", async ({ page }) => {
+  test.skip(test.info().project.name !== "mobile", "mobile viewport only");
+  await page.goto("/login");
+  await expect(page.getByRole("button", { name: /^Sign in$/ })).toBeVisible();
+  expect(await undersizedTargets(page)).toEqual([]);
+});
+
+test("the dashboard is thumb-sized on mobile, and never scrolls sideways", async ({ page }) => {
+  test.skip(test.info().project.name !== "mobile", "mobile viewport only");
+  await signIn(page, "demo@nivaaran.app");
+  expect(await undersizedTargets(page)).toEqual([]);
+
+  // Wide content scrolls inside its own container; the page body never does.
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
 });
