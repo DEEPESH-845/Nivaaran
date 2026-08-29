@@ -35,7 +35,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#fbfaf8",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fcfbf8" },
+    { media: "(prefers-color-scheme: dark)", color: "#16181f" },
+  ],
   width: "device-width",
   initialScale: 1,
 };
@@ -44,7 +47,24 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${instrument.variable} ${devanagari.variable}`}>
+    <html
+      lang="en"
+      className={`${inter.variable} ${instrument.variable} ${devanagari.variable}`}
+      suppressHydrationWarning
+    >
+      <head>
+        {/* Applies a stored theme choice before first paint. Without this the
+            page renders in the OS theme and then snaps to the chosen one — a
+            white flash on the way into dark, which is exactly the moment it
+            hurts. Absent a stored choice the attribute stays off and the CSS
+            media query decides, so this is also correct with JS disabled. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'try{var t=localStorage.getItem("nivaaran-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}',
+          }}
+        />
+      </head>
       <body>
         <LangProvider>
           <AuthProvider>

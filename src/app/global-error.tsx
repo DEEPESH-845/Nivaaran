@@ -23,6 +23,9 @@ export default function GlobalError({
           minHeight: "100dvh",
           display: "grid",
           placeItems: "center",
+          // Outside the app shell, so it carries its own palette. Pinned to
+          // light so the UA does not force-dark a page of hardcoded colours.
+          colorScheme: "light",
           background: "#fbfaf8",
           color: "#22252f",
           fontFamily: "ui-sans-serif, system-ui, sans-serif",

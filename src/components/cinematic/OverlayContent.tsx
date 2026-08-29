@@ -4,6 +4,9 @@ import React, { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
+import { useLang } from "@/lib/i18n/context";
+import type { Bi } from "@/lib/rules/types";
+
 import { DESKTOP_QUERY, MOBILE_QUERY, SCROLL, STILL_QUERY } from "./config";
 
 if (typeof window !== "undefined") {
@@ -12,61 +15,114 @@ if (typeof window !== "undefined") {
 
 /* ------------------------------------------------------------------ copy */
 
+/** A headline is written as its own lines, so a beat breaks where the writer
+ *  meant it to rather than wherever the viewport happens to run out. */
+type BeatHead = { en: readonly string[]; hi: readonly string[] };
+
 /**
  * Each beat's window as a percentage of the pinned scroll, so the timeline
  * below reads as the storyboard it is. `in`/`out` are entry and exit marks;
  * the last beat never leaves.
  */
-export const BEAT_COPY = [
+
+export const BEAT_COPY: readonly {
+  key: string;
+  in: number;
+  out: number | null;
+  head: BeatHead;
+  sub: Bi;
+  alt: Bi;
+}[] = [
   {
     key: "intro",
     in: 2,
     out: 12,
-    head: ["Meet Arjun."],
-    sub: "He just wants to take care of his PF.",
-    alt: "Arjun at home, arms folded, at ease.",
+    head: { en: ["Meet Arjun."], hi: ["मिलिए अर्जुन से।"] },
+    sub: {
+      en: "He just wants to take care of his PF.",
+      hi: "वह बस अपने PF का काम निपटाना चाहता है।",
+    },
+    alt: {
+      en: "Arjun at home, arms folded, at ease.",
+      hi: "अर्जुन घर पर, बाँहें बाँधे, आराम से।",
+    },
   },
   {
     key: "beat1",
     in: 17,
     out: 32,
-    head: ["Then he tries to navigate", "the EPFO process."],
-    sub: "It’s a maze of forms and portals.",
-    alt: "Arjun looking at his phone, working through the EPFO portal.",
+    head: {
+      en: ["Then he tries to navigate", "the EPFO process."],
+      hi: ["फिर वह EPFO की प्रक्रिया से", "गुज़रने की कोशिश करता है।"],
+    },
+    sub: {
+      en: "It’s a maze of forms and portals.",
+      hi: "फ़ॉर्म और पोर्टल की भूलभुलैया है।",
+    },
+    alt: {
+      en: "Arjun looking at his phone, working through the EPFO portal.",
+      hi: "अर्जुन अपने फ़ोन पर EPFO पोर्टल खंगालते हुए।",
+    },
   },
   {
     key: "transition",
     in: 37,
     out: 52,
-    head: ["What should be simple", "becomes complicated."],
-    sub: "He doesn’t know what happens next.",
-    alt: "Arjun frowning at his phone, unsure what went wrong.",
+    head: {
+      en: ["What should be simple", "becomes complicated."],
+      hi: ["जो आसान होना चाहिए", "वह उलझ जाता है।"],
+    },
+    sub: {
+      en: "He doesn’t know what happens next.",
+      hi: "उसे पता नहीं आगे क्या होगा।",
+    },
+    alt: {
+      en: "Arjun frowning at his phone, unsure what went wrong.",
+      hi: "अर्जुन फ़ोन देखकर परेशान, समझ नहीं आ रहा कहाँ चूक हुई।",
+    },
   },
   {
     key: "reveal",
     in: 57,
     out: 72,
-    head: ["Until he discovers", "a new way."],
-    sub: "Clear, transparent, and direct.",
-    alt: "Arjun holding up his phone, the Nivaaran app open on it.",
+    head: {
+      en: ["Until he discovers", "a new way."],
+      hi: ["जब तक उसे मिलता है", "एक नया रास्ता।"],
+    },
+    sub: { en: "Clear, transparent, and direct.", hi: "साफ़, पारदर्शी और सीधा।" },
+    alt: {
+      en: "Arjun holding up his phone, the Nivaaran app open on it.",
+      hi: "अर्जुन फ़ोन उठाए हुए, उस पर निवारण खुला है।",
+    },
   },
   {
     key: "detail",
     in: 77,
     out: 87,
-    head: ["Now he knows exactly what to do."],
-    sub: "See where things stand.",
-    alt: "Arjun reading a plain list of what to fix.",
+    head: {
+      en: ["Now he knows exactly what to do."],
+      hi: ["अब उसे ठीक-ठीक पता है कि क्या करना है।"],
+    },
+    sub: { en: "See where things stand.", hi: "देखिए बात कहाँ तक पहुँची है।" },
+    alt: {
+      en: "Arjun reading a plain list of what to fix.",
+      hi: "अर्जुन सादा सूची पढ़ रहा है कि क्या ठीक करना है।",
+    },
   },
   {
     key: "final",
     in: 92,
     out: null,
-    head: ["Your PF journey", "should feel this simple."],
-    sub: "Understand. Act. Resolve.",
-    alt: "Arjun, done, phone lowered.",
+    head: {
+      en: ["Your PF journey", "should feel this simple."],
+      hi: ["आपका PF का सफ़र", "इतना ही आसान होना चाहिए।"],
+    },
+    sub: { en: "Understand. Act. Resolve.", hi: "समझें। कदम उठाएँ। निपटाएँ।" },
+    alt: { en: "Arjun, done, phone lowered.", hi: "अर्जुन, काम पूरा, फ़ोन नीचे।" },
   },
-] as const;
+];
+
+const CUE: Bi = { en: "Scroll", hi: "स्क्रॉल करें" };
 
 /* --------------------------------------------------------------- overlay */
 
@@ -75,6 +131,7 @@ interface OverlayContentProps {
 }
 
 export function OverlayContent({ scrollContainerRef }: OverlayContentProps) {
+  const { lang, t } = useLang();
   const beatsRef = useRef<(HTMLDivElement | null)[]>([]);
   const cueRef = useRef<HTMLDivElement>(null);
 
@@ -164,8 +221,8 @@ export function OverlayContent({ scrollContainerRef }: OverlayContentProps) {
           className="col-start-1 row-start-1 mx-auto w-full max-w-2xl self-end px-5 pb-[max(14vh,5rem)] text-center text-white md:self-center md:px-8 md:pb-0"
         >
           <h2 className="text-balance text-[clamp(1.75rem,min(7vw,9vh),3.75rem)] font-semibold leading-[1.08] tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
-            {beat.head.map((line, j) => (
-              <React.Fragment key={line}>
+            {beat.head[lang].map((line, j) => (
+              <React.Fragment key={`${beat.key}-${j}`}>
                 {j > 0 ? <br className="hidden sm:inline" /> : null}
                 {j > 0 ? " " : null}
                 {line}
@@ -173,7 +230,7 @@ export function OverlayContent({ scrollContainerRef }: OverlayContentProps) {
             ))}
           </h2>
           <p className="mt-3 text-balance text-[clamp(0.9375rem,min(3.4vw,4vh),1.375rem)] leading-snug text-white/80 drop-shadow-[0_1px_8px_rgba(0,0,0,0.6)]">
-            {beat.sub}
+            {t(beat.sub)}
           </p>
         </div>
       ))}
@@ -185,7 +242,7 @@ export function OverlayContent({ scrollContainerRef }: OverlayContentProps) {
         className="col-start-1 row-start-1 flex flex-col items-center gap-2 self-end justify-self-center pb-[max(5vh,1.5rem)] text-white/60"
       >
         <span className="text-[0.6875rem] font-medium uppercase tracking-[0.14em]">
-          Scroll
+          {t(CUE)}
         </span>
         <span className="h-8 w-px bg-gradient-to-b from-white/60 to-transparent" />
       </div>
