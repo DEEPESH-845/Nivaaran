@@ -1,34 +1,19 @@
-import { NextResponse } from "next/server";
+import { ok } from "@/lib/api/respond";
+import { lookupIfsc } from "@/lib/bank/ifsc";
 
-// This simulates a live NPCI Directory lookup.
-const RETIRED_IFSC_PREFIXES: Record<string, string> = {
-  SYNB: "CNRB", // Syndicate -> Canara
-  ALLA: "IDIB", // Allahabad -> Indian
-  OBCI: "PUNB", // Oriental -> PNB
-  UTBI: "PUNB", // United -> PNB
-  CORP: "UBIN", // Corporation -> Union
-  ANDB: "UBIN", // Andhra -> Union
-  VJYA: "BARB", // Vijaya -> BOB
-  DENA: "BARB", // Dena -> BOB
-};
-
-const IFSC_SHAPE = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-
+/**
+ * Bank directory lookup.
+ *
+ * Stands in for what would be a live RBI/NPCI directory call. An unusable code
+ * is a 200 with `valid: false`, not an error — "this code is dead" is an
+ * answer, and the caller has to render it either way.
+ *
+ * Deliberately not rate limited: it is an in-memory lookup over a fixed table
+ * with no I/O and no cost, so there is nothing to protect. Limiting it would
+ * only mean answering "valid" for a code we never checked, and a false all-
+ * clear on a bank account is the one answer this product must never give.
+ */
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const code = searchParams.get("code")?.toUpperCase() ?? "";
-
-  if (!IFSC_SHAPE.test(code)) {
-    return NextResponse.json({ valid: false }, { status: 200 });
-  }
-
-  const prefix = code.slice(0, 4);
-  if (RETIRED_IFSC_PREFIXES[prefix]) {
-    return NextResponse.json(
-      { valid: false, retiredTo: RETIRED_IFSC_PREFIXES[prefix] },
-      { status: 200 }
-    );
-  }
-
-  return NextResponse.json({ valid: true }, { status: 200 });
+  const code = new URL(request.url).searchParams.get("code") ?? "";
+  return ok(lookupIfsc(code));
 }
