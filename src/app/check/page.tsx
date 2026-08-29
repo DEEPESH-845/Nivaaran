@@ -2,9 +2,9 @@
 
 import { Suspense, useEffect, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, FileText, Landmark, ScanLine } from "lucide-react";
+import { ArrowLeft, ArrowRight, CreditCard, FileText, Landmark, ScanLine } from "lucide-react";
 import Link from "next/link";
-import { Button, Card, Choice, Disclosure, SectionLabel } from "@/components/ui";
+import { Button, Card, Choice, Disclosure, Divider, SectionLabel } from "@/components/ui";
 import { JourneyRail } from "@/components/journey-rail";
 import { QUESTIONS } from "@/lib/questions";
 import { useLang } from "@/lib/i18n/context";
@@ -98,6 +98,40 @@ function RecordsStep() {
               {lang === "hi"
                 ? "पहचान दस्तावेज़ और पासबुक की तस्वीर से चारों जानकारियाँ पढ़ी जाती हैं, और हर एक का EPFO रिकॉर्ड से मिलान दिखता है।"
                 : "Photograph an identity document and a passbook; we read the four fields EPFO checks and compare each one against the record above."}
+            </span>
+          </span>
+          <ArrowRight
+            aria-hidden
+            className="mt-0.5 size-4 shrink-0 text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-indigo-600"
+            strokeWidth={1.8}
+          />
+        </Link>
+
+        <Divider className="my-4" />
+
+        {/* The second door into the same two fields. A photograph needs a
+            model, a network call and a legible scan; this needs a keyboard,
+            and it is the only screen that shows the reader what the record
+            they are arguing with actually looks like. */}
+        <Link
+          href="/adhaar"
+          className="group flex min-h-11 items-start gap-3 rounded-ctl text-left"
+        >
+          <CreditCard
+            aria-hidden
+            className="mt-0.5 size-4 shrink-0 text-ink-faint transition-colors group-hover:text-indigo-600"
+            strokeWidth={1.7}
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block text-md font-medium text-ink">
+              {lang === "hi"
+                ? "या इन्हें अपने आधार कार्ड पर देखें"
+                : "Or see them on your Aadhaar card"}
+            </span>
+            <span className="mt-1 block text-sm leading-relaxed text-ink-soft">
+              {lang === "hi"
+                ? "वही नाम और जन्मतिथि, एक कार्ड की तरह — घुमाकर देखिए, बदलिए, और जाँच का नतीजा तुरंत बदलता देखिए। कोई तस्वीर नहीं चाहिए।"
+                : "The same name and date of birth, as a card you can turn over and edit. No photograph, no model — and the verdict changes as you type."}
             </span>
           </span>
           <ArrowRight
