@@ -22,11 +22,12 @@ import type { Bi, Facts } from "@/lib/rules/types";
 const EXAMPLE: Facts = personaById("rajesh")!.facts;
 const BODY = JSON.stringify(EXAMPLE, null, 2);
 
-const CURL = `curl -sS https://nivaaran.app/api/preflight \\
+const CURL = `curl -sS https://nivaaran.app/api/v1/preflight \\
   -H 'content-type: application/json' \\
   -d '${JSON.stringify(EXAMPLE)}'`;
 
 const RESPONSE_SHAPE = `{
+  apiVersion:    "v1",
   verdict: "clear" | "fixable" | "blocked_external",
   findings: [{
     ruleId: string,               // e.g. "R-NAME-AADHAAR"
@@ -51,6 +52,20 @@ const RESPONSE_SHAPE = `{
   engineVersion: string,
   evaluatedAt:   string,          // ISO
   disclaimer:    string
+}`;
+
+const ERROR_SHAPE = `HTTP 422
+
+{
+  "error": {
+    "code":      "INVALID_REQUEST",   // INVALID_REQUEST | RATE_LIMITED
+                                      // | NOT_FOUND | INTERNAL_ERROR ...
+    "message":   "The member record did not match the expected shape.",
+    "requestId": "8f3c...",           // quote this
+    "fields": {                       // present only on a validation failure
+      "records.epfo.dob": "expected YYYY-MM-DD"
+    }
+  }
 }`;
 
 const COPY = {
@@ -283,6 +298,69 @@ export default function ApiPage() {
             ) : null}
           </div>
         </Card>
+      </section>
+
+      {/* --------------------------------------- Versions, limits, errors */}
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold tracking-[-0.01em] text-ink">
+          {lang === "hi"
+            ? "संस्करण, सीमाएँ और त्रुटियाँ"
+            : "Versions, limits and errors"}
+        </h2>
+
+        <dl className="grid gap-3 sm:grid-cols-3">
+          <Card className="p-4">
+            <dt className="text-2xs font-semibold uppercase tracking-[0.09em] text-ink-mute">
+              {lang === "hi" ? "पथ" : "Paths"}
+            </dt>
+            <dd className="mt-1.5 space-y-1 text-sm text-ink-soft">
+              <p className="font-mono text-ink">/api/v1/preflight</p>
+              <p className="font-mono">/api/preflight</p>
+              <p className="text-xs leading-relaxed">
+                {lang === "hi"
+                  ? "दोनों एक ही हैंडलर हैं। नए एकीकरण v1 पर टिकें; पुराना पथ पहले दिन से दस्तावेज़ में है, इसलिए बना रहेगा।"
+                  : "The same handler. Pin v1 for anything new; the unversioned path has been documented since the first build, so it stays."}
+              </p>
+            </dd>
+          </Card>
+
+          <Card className="p-4">
+            <dt className="text-2xs font-semibold uppercase tracking-[0.09em] text-ink-mute">
+              {lang === "hi" ? "प्रमाणीकरण" : "Authentication"}
+            </dt>
+            <dd className="mt-1.5 space-y-1 text-sm text-ink-soft">
+              <p className="font-medium text-ink">{lang === "hi" ? "कोई नहीं" : "None"}</p>
+              <p className="text-xs leading-relaxed">
+                {lang === "hi"
+                  ? "यह एंडपॉइंट कुछ नहीं रखता, कोई पहचानकर्ता नहीं माँगता और कोई पेलोड लॉग नहीं करता — इसलिए इसे किसी कुंजी की ज़रूरत नहीं। सिर्फ़ काल्पनिक डेटा भेजें।"
+                  : "It stores nothing, needs no personal identifier and logs no payload, so it needs no key. Send synthetic data only."}
+              </p>
+            </dd>
+          </Card>
+
+          <Card className="p-4">
+            <dt className="text-2xs font-semibold uppercase tracking-[0.09em] text-ink-mute">
+              {lang === "hi" ? "दर सीमा" : "Rate limit"}
+            </dt>
+            <dd className="mt-1.5 space-y-1 text-sm text-ink-soft">
+              <p className="font-medium text-ink">
+                30 {lang === "hi" ? "प्रति मिनट" : "per minute"}
+              </p>
+              <p className="text-xs leading-relaxed">
+                {lang === "hi"
+                  ? "प्रति क्लाइंट पता, 32 KB बॉडी की अधिकतम सीमा के साथ। यह प्रोटोटाइप अवसंरचना है, उत्पादन SLA नहीं।"
+                  : "Per client address, with a 32 KB body ceiling. This is prototype infrastructure, not a production SLA."}
+              </p>
+            </dd>
+          </Card>
+        </dl>
+
+        <p className="max-w-2xl text-sm leading-relaxed text-ink-soft">
+          {lang === "hi"
+            ? "हर त्रुटि एक ही आकार में आती है: एक मशीन-पठनीय कोड, एक ऐसा वाक्य जो सीधे उपयोगकर्ता को दिखाया जा सके, और एक अनुरोध पहचानकर्ता जिसे उद्धृत किया जा सके। कोई स्टैक ट्रेस, कोई आंतरिक विवरण नहीं।"
+            : "Every error comes back in one shape: a machine-readable code, a sentence you can put in front of a person, and a request id they can quote. No stack traces, no internal detail."}
+        </p>
+        <Code label={lang === "hi" ? "त्रुटि" : "Error"}>{ERROR_SHAPE}</Code>
       </section>
 
       {/* --------------------------------------------------------- Honesty */}
