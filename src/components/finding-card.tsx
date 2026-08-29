@@ -20,6 +20,7 @@ import { NameDiff, ValueDiff } from "@/components/name-diff";
 import { ExplainSimply } from "@/components/explain-simply";
 import { SOURCES } from "@/lib/rules/sources";
 import type { Confidence, Finding, Owner, Severity } from "@/lib/rules/types";
+import { EmployerHandoff } from "@/components/employer-handoff";
 import { useLang } from "@/lib/i18n/context";
 
 const SEV_TONE: Record<Severity, Tone> = {
@@ -248,16 +249,13 @@ export function FindingCard({
                   </a>
                 ) : null}
 
+                {/* A citizen cannot open the employer console — that is an
+                    employer's data — so what they get instead is the thing
+                    that actually moves this: a message to send. */}
                 {finding.owner === "employer" ? (
-                  <Link
-                    href="/employer"
-                    className="flex min-h-11 items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 print:hidden"
-                  >
-                    {lang === "hi"
-                      ? "अपने नियोक्ता को यह दिखाएँ — उन्हें क्या करना है"
-                      : "Show your employer what they have to do"}
-                    <ArrowRight aria-hidden className="size-3.5" strokeWidth={1.8} />
-                  </Link>
+                  <div className="w-full print:hidden">
+                    <EmployerHandoff findings={[finding]} />
+                  </div>
                 ) : null}
 
                 {onFixed && !fixed ? (

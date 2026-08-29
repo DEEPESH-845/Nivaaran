@@ -269,3 +269,133 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
 export function Divider({ className }: { className?: string }) {
   return <hr className={clsx("border-0 border-t border-line", className)} />;
 }
+
+/* ----------------------------------------------------------------- Field */
+
+/**
+ * A labelled input.
+ *
+ * The label is a real `<label>`, never a placeholder: placeholder-as-label
+ * disappears the moment someone starts typing, which is exactly when a person
+ * filling a government-adjacent form needs to re-read it. The error is wired
+ * through `aria-describedby` and `aria-invalid` so it is announced, not just
+ * coloured.
+ */
+export const Field = forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement> & {
+    label: string;
+    hint?: string;
+    error?: string;
+    trailing?: React.ReactNode;
+  }
+>(function Field({ label, hint, error, trailing, id, className, ...rest }, ref) {
+  const inputId = id ?? rest.name ?? label.replace(/\s+/g, "-").toLowerCase();
+  const hintId = hint ? `${inputId}-hint` : undefined;
+  const errorId = error ? `${inputId}-error` : undefined;
+
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={inputId} className="block text-sm font-medium text-ink">
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          ref={ref}
+          id={inputId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={[errorId, hintId].filter(Boolean).join(" ") || undefined}
+          className={clsx(
+            "min-h-12 w-full rounded-ctl border bg-paper-raised px-3.5 text-md text-ink",
+            "transition-colors duration-150 placeholder:text-ink-faint",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+            error ? "border-blocked-500" : "border-line-strong hover:border-ink-mute",
+            trailing && "pr-13",
+            className,
+          )}
+          {...rest}
+        />
+        {trailing ? (
+          <span className="absolute inset-y-0 right-1 flex items-center">{trailing}</span>
+        ) : null}
+      </div>
+      {hint ? (
+        <p id={hintId} className="text-xs leading-relaxed text-ink-mute">
+          {hint}
+        </p>
+      ) : null}
+      {error ? (
+        <p id={errorId} className="text-sm leading-relaxed text-blocked-700">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+});
+
+/* ----------------------------------------------------------------- Alert */
+
+/**
+ * A form-level message. `role="alert"` so a screen reader hears a failed
+ * sign-in without having to go looking for it.
+ */
+export function Alert({ tone = "blocked", children }: { tone?: Tone; children: React.ReactNode }) {
+  return (
+    <div
+      role="alert"
+      className={clsx("rounded-card border p-3.5 text-sm leading-relaxed", CALLOUT[tone], "text-ink")}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------- Skeleton */
+
+/** Shaped like the content it replaces, so nothing jumps when it arrives. */
+export function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      aria-hidden
+      className={clsx("animate-pulse rounded bg-line-soft motion-reduce:animate-none", className)}
+    />
+  );
+}
+
+/* ------------------------------------------------------------ EmptyState */
+
+export function EmptyState({
+  icon,
+  title,
+  body,
+  action,
+}: {
+  icon?: React.ReactNode;
+  title: string;
+  body: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-card border border-dashed border-line-strong bg-paper-sunk/40 p-6 text-center">
+      {icon ? <div className="mx-auto mb-3 w-fit text-ink-faint">{icon}</div> : null}
+      <p className="font-semibold text-ink">{title}</p>
+      <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-ink-soft">{body}</p>
+      {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------- Spinner */
+
+export function Spinner({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      className={clsx("size-4 animate-spin motion-reduce:animate-none", className)}
+    >
+      <circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.25" />
+      <path d="M14.5 8A6.5 6.5 0 0 0 8 1.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
