@@ -197,6 +197,10 @@ export function OverlayContent({ scrollContainerRef }: OverlayContentProps) {
 
       return () => {
         gsap.set(beats, { clearProps: "all" });
+        // The cue is faded out by the timeline above. Without clearing it too,
+        // crossing the mobile/desktop breakpoint reverts into a scene whose
+        // scroll hint is permanently invisible.
+        if (cueRef.current) gsap.set(cueRef.current, { clearProps: "all" });
       };
     });
 
