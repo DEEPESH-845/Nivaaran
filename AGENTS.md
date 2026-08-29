@@ -38,13 +38,15 @@ pnpm lint         # eslint
 | `src/lib/match/` | Name + date reconciliation, token diff, document reconciliation |
 | `src/lib/ai/` | Server-only OpenAI wrapper, rejection decoder, extraction schema + scrub, rate limit |
 | `src/lib/adhaar/` | Specimen-card derivations + the Verhoeff checksum. Pure, no I/O |
+| `src/lib/date.ts` | The **only** date parser and the **only** date formatter. ISO is the value, `DD/MM/YYYY` is the picture |
+| `src/lib/documents/` | Reading a specimen we ship, without a model |
 | `src/lib/i18n/` | UI chrome strings + language store |
 | `src/lib/state/` | Session store (`useSyncExternalStore`, no state library) |
 | `src/content/` | Synthetic personas, the employer roster, friction analysis as data |
 | `src/components/` | Shared UI (`ui.tsx`), journey components |
 | `src/components/motion/` | `Reveal`, `useSceneProgress`, `useCanvas` — the motion primitives |
 | `src/components/scenes/` | The landing narrative's six scenes |
-| `src/components/adhaar/` | The specimen card: DOM faces, the interaction stage, the lazy WebGL studio |
+| `src/components/adhaar/` | The specimen card: DOM faces and the interaction stage. Nothing behind it |
 | `src/app/` | landing → check → documents → preflight → claim/done/status, why/sources/api/employer, adhaar |
 | `src/app/api/` | `preflight`, `ai/decode`, `ai/explain`, `ai/extract` |
 | `public/samples/` | The three synthetic specimen documents (SVG) |
@@ -62,7 +64,7 @@ Keep these straight; the rules differ:
    It is an argument. It has to make a stranger — a judge, a journalist, an EPFO official — understand the problem, why the current approach fails, and what changes, in one scroll. It is allowed to be cinematic. *It is not allowed to be slow, inaccessible, or untrue.*
 
 3. **The Specimen Card** (`/adhaar`)
-   It is the one *object* in the product. Everywhere else the record is a row in a table; here it is the card a citizen actually holds, tiltable and lit, with the same name and date of birth the engine compares. It is allowed to be immersive — it is the only surface that is. *It is not allowed to be a counterfeit, to cost anything on a slow connection, or to hold a single fact a keyboard reader cannot reach.*
+   It is the one *object* in the product. Everywhere else the record is a row in a table; here it is the card a citizen actually holds, tiltable, with the same name and date of birth the engine compares. The card is the whole subject of the page: there is no scene around it, nothing painted behind it, and nothing on it that moves unless a finger or a key moved it. *It is not allowed to be a counterfeit, to cost anything on a slow connection, or to hold a single fact a keyboard reader cannot reach.*
 
 4. **The Employer Lens** (`/employer`) & **The API Page** (`/api`)
    They are proof that the engine is not a website. Both are quiet and dense like the journey. `/employer` is a work queue for an HR generalist who does not know a former employee is blocked on them — every row is a person, every item is minutes. `/documents` reads documents and **compares** them; it never says *verify*. Its voice is the trap: a finding title says "your date of exit", which is addressed to the member. Employer-owned work must be phrased from `employerFix`, and member-owned work must be visibly quoted.
@@ -85,7 +87,11 @@ Keep these straight; the rules differ:
 12. **Never invent a number.** Every figure on the landing page traces to `docs/RESEARCH.md` or `SOURCES`. 7.96 crore and 1.74 crore are published figures. 796 and 174 marks are those figures ÷ 100,000. The 2,880× ratio is 20 days ÷ 10 minutes. If you cannot derive it, do not draw it.
 
 13. **An identifier a person types stays in the browser.** `/adhaar` accepts a 12-digit Aadhaar number because a specimen card without one teaches nothing, and it validates it with the real Verhoeff checksum. It then does exactly four things with it: renders it masked to the last four, reveals it on an explicit press, validates it, and forgets it on reload. It is **never** written to `Facts`, never put in `localStorage`, never sent to any route, and never near `/api/ai/extract` — rule 9 governs what the *model* may return, this governs what a *person* may hand us, and both answers are the same. `Facts` carries `name` and `dob` from this screen and nothing else: gender, city and the number are presentational, because no rule reads them and `preflight` has no business seeing a field it cannot evaluate.
-14. **WebGL is an upgrade, never a requirement.** It is allowed on `/adhaar` and nowhere else. The card is complete before three.js exists — real DOM text, CSS `preserve-3d`, pointer and keyboard tilt, both faces — and the WebGL studio behind it only ever adds light. Non-negotiable, all four: the `three` chunk is dynamically imported so it is absent from first load; it is gated on `saveData`, `effectiveType`, `deviceMemory` and reduced-motion through one pure `shouldEnhance()` that has unit tests; its environment is generated procedurally so it fetches **no** textures; and a visible control turns it off for good. Blocking the chunk entirely must leave every detail readable and every control working — there is an e2e test that does precisely that.
+14. **Nothing is rendered behind the card.** There is no WebGL anywhere in this product — not on `/adhaar`, not in the narrative. There was: a three.js studio that painted a pool of light, a contact shadow and drifting motes behind the specimen card, gated and lazily loaded and genuinely careful. It was still a lit room around the one object this page exists to show, and it ran a ticker for as long as the stage was on screen. The card carries its own depth now (`--shadow-card-object`, three CSS edge clones, a fixed foil) and everything that moves does so because a pointer or a key moved it — no idle loop, no scene, no canvas. Two e2e tests hold the line: `page.locator("canvas")` must be empty on `/adhaar`, and no script the page loads may contain `WebGLRenderer`. Reintroducing a renderer means arguing for it here first.
+
+15. **One parser and one format for dates.** `src/lib/date.ts` is the only place a date is read or written. ISO `YYYY-MM-DD` is the value — `Facts`, the matchers, `ExtractSchema`, every `<input type="date">` — and `DD/MM/YYYY` is the only thing a citizen ever sees, on the card, in the tables, in the evidence. Never `new Date(someString)`: `"01/02/2000"` is February in one browser and January in another, and a date of birth silently swapped is a rejected claim. Day-first, by position, with a real calendar check.
+
+16. **A reading fills the case, not a component.** Reading a document writes through to `Facts` — that is the entire product claim, and it must be true without an `OPENAI_API_KEY`, which is why the samples we ship are read directly by `lib/documents/sample.ts` when the model is unavailable. Three rules on top of it, all tested in `e2e/autofill.spec.ts`: a field the reader typed into is never overwritten by a later reading (the disagreement is shown instead), a low-confidence reading fills the boxes but waits for the button before touching the case, and a stale reading never lands on a newer one — every call carries a sequence number.
 
 ---
 
@@ -136,7 +142,7 @@ Three primitives, all in `src/components/motion/reveal.tsx`:
 - **The hidden state of a reveal lives behind `@media (prefers-reduced-motion: no-preference)`** and is undone under `@media (scripting: none)`, so a reader who has asked for stillness — or whose script never runs — never gets a blank page.
 - **rAF loops run only while the scene intersects.** Nothing animates off screen.
 - **No scroll hijacking and no custom cursor, anywhere.** Both were considered and rejected: they cost touch and keyboard parity and buy nothing this argument needs.
-- **No WebGL in the narrative.** The eight beats are canvas-2d and CSS, and stay that way — beat 03 and beat 05 are `useCanvas`, not scenes. WebGL lives on `/adhaar` alone, under rule 14, where it is an upgrade over a page that is already finished without it. This is narrower than it used to read: rule 8 leaves the dependency list open, and this line is about *where* a renderer earns its parity cost, not about which libraries exist.
+- **No WebGL, anywhere.** The eight beats are canvas-2d and CSS, and stay that way — beat 03 and beat 05 are `useCanvas`, not scenes. `/adhaar` used to be the one exception; it is not one any more (rule 14). Rule 8 leaves the dependency list open and this line is not about which libraries exist — it is that no renderer in this product has yet earned its parity cost.
 
 ---
 
