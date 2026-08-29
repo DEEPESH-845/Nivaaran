@@ -664,3 +664,54 @@ export const RULES: RuleFn[] = [
 ];
 
 export const AUTOSETTLE_CEILING = 500000;
+
+/**
+ * The rule registry.
+ *
+ * Every id the engine can emit, with the source it rests on and where that
+ * reading stands today. This is what /governance renders: a rule whose source
+ * we could not re-verify is shown as `needs_review`, never silently presented
+ * as current truth. `reviewedOn` is the date a human last read the source, not
+ * the date the file changed.
+ */
+export type RuleStatus = "verified" | "needs_review" | "stale" | "deprecated" | "draft";
+
+export interface RuleMeta {
+  id: string;
+  sourceId: string;
+  status: RuleStatus;
+  reviewedOn: string;
+  /** Why this rule is not `verified`, when it is not. */
+  note?: Bi;
+}
+
+export const RULE_META: RuleMeta[] = [
+  { id: "R-AADHAAR-SEED", sourceId: "epfo-jd-2025", status: "needs_review", reviewedOn: "2026-08-23",
+    note: { en: "Primary source did not resolve from our network; corroborated by a secondary tax alert.",
+            hi: "मूल स्रोत हमारे नेटवर्क से नहीं खुला; एक द्वितीयक कर-सूचना से पुष्टि हुई।" } },
+  { id: "R-EXIT-DATE", sourceId: "epfo-jd-2025", status: "needs_review", reviewedOn: "2026-08-23",
+    note: { en: "Primary source did not resolve from our network; corroborated by a secondary tax alert.",
+            hi: "मूल स्रोत हमारे नेटवर्क से नहीं खुला; एक द्वितीयक कर-सूचना से पुष्टि हुई।" } },
+  { id: "R-MULTI-UAN", sourceId: "epfo-jd-2025", status: "needs_review", reviewedOn: "2026-08-23" },
+  { id: "R-NAME-AADHAAR", sourceId: "epfo-jd-deloitte", status: "verified", reviewedOn: "2026-08-23" },
+  { id: "R-DOB-AADHAAR", sourceId: "epfo-jd-deloitte", status: "verified", reviewedOn: "2026-08-23" },
+  { id: "R-BANK-NAME", sourceId: "epfo-rejections", status: "verified", reviewedOn: "2026-08-23" },
+  { id: "R-IFSC", sourceId: "ifsc-mergers", status: "verified", reviewedOn: "2026-08-23" },
+  { id: "R-WAIT-60D", sourceId: "epf-form19-wait", status: "needs_review", reviewedOn: "2026-08-23",
+    note: { en: "Consistent across practitioner guides but not checked against the bare text of the EPF Scheme, 1952.",
+            hi: "कई व्यावसायिक मार्गदर्शिकाओं में एक जैसा, पर EPF योजना 1952 के मूल पाठ से मिलान नहीं किया गया।" } },
+  { id: "R-TDS-192A", sourceId: "tds-192a", status: "needs_review", reviewedOn: "2026-08-23",
+    note: { en: "Sources disagree on a legacy Rs 30,000 threshold that predates the 2016 amendment. We apply Rs 50,000.",
+            hi: "2016 के संशोधन से पहले की Rs 30,000 सीमा पर स्रोत असहमत हैं। हम Rs 50,000 लागू करते हैं।" } },
+  { id: "R-AUTOSETTLE", sourceId: "epfo-autosettle", status: "stale", reviewedOn: "2026-08-23",
+    note: { en: "Auto-settlement ceilings change without a circular. Treat the figure as indicative.",
+            hi: "ऑटो-सेटलमेंट की सीमाएँ बिना परिपत्र के बदलती रहती हैं। इस आँकड़े को सांकेतिक मानें।" } },
+];
+
+/** Every id the engine can emit, in evaluation order. */
+export const RULE_IDS: string[] = RULE_META.map((r) => r.id);
+
+/** A rule is only as fresh as the source under it. */
+export function ruleMeta(id: string): RuleMeta | undefined {
+  return RULE_META.find((r) => r.id === id);
+}
