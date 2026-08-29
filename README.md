@@ -59,15 +59,55 @@ And somebody can, because **the fix already exists and is free**: EPFO's circula
 
 ---
 
-## Get Started
+## Run it in two minutes
 
-| Resource | Link / Command |
-|---|---|
-| **Live Demo** | [nivaaran-pi.vercel.app](https://nivaaran-pi.vercel.app) *(deployment URL)* |
-| **Demo Script** | [docs/DEMO.md](docs/DEMO.md) *(full demo script)* |
-| **Run Locally** | `pnpm install && pnpm dev` |
+```bash
+pnpm install
+pnpm dev          # http://localhost:3000
+```
 
-Three synthetic citizens on the landing page. Pick the first one — **“I left my job two months ago and I need my PF money”** — and you are at the verdict in five taps. 
+No environment variables are required. Without an `OPENAI_API_KEY` every AI
+feature degrades to its deterministic path and the whole journey still
+completes — there is a Playwright test that aborts every AI request and proves
+it.
+
+### Demo login
+
+Three seeded accounts, one password. Every record behind them is invented.
+
+| Email | Password | What it opens |
+|---|---|---|
+| `demo@nivaaran.app` | `NivaaranDemo2026!` | **Citizen.** Four blockers in the record — the main journey. |
+| `employer@nivaaran.app` | `NivaaranDemo2026!` | **Employer.** Nine leavers, sorted by who is blocked on whom. |
+| `admin@nivaaran.app` | `NivaaranDemo2026!` | **Rule governance.** Every rule, its source, and how fresh that source is. |
+
+They are also printed on **[/login](http://localhost:3000/login)** with a
+one-tap *Fill this in* button, so nothing has to be typed. They are created by
+a seed on first sign-in ([`src/lib/auth/seed.ts`](src/lib/auth/seed.ts)) and
+hashed through the same scrypt path as any other account — a demo account with
+a special-cased login would be a demo account with a bypass.
+
+### You do not need an account
+
+The entire citizen journey runs signed out: pick a situation on the landing
+page and go. That is a product claim, not an oversight — *no login, no OTP* is
+half the point. An account adds three things: your check is saved, it follows
+you to another device, and you get a dashboard that remembers whose job each
+remaining problem is.
+
+Sign in mid-journey and the anonymous case is adopted rather than discarded.
+
+### The two-minute demo
+
+1. **`/`** — the record that fails a claim, one initial out of place.
+2. **Sign in** as `demo@nivaaran.app` → **`/dashboard`**: *2 things need attention*, each with an owner, a duration and a source.
+3. **Run the check** → four blockers, each with evidence, a fix, and where the rule came from.
+4. **Mark the name correction done** → the engine re-runs live, four becomes two, because the bank-name check was measuring the same wrong value.
+5. **Switch to `employer@nivaaran.app`** → the same engine, read from the other side: who is waiting, on whom, for how long.
+6. **Type `/governance` as the citizen** → `403`. The boundary is server-side, not a hidden menu item.
+
+Every screen has a *Reset demo data* control, so there is no path a judge can
+get stuck in.
 
 ---
 
@@ -115,53 +155,177 @@ We are not proposing to replace EPFO's backend. We are proposing a **validation 
 ## Architecture
 
 > [!NOTE]
-> Next.js 16 · React 19 · TypeScript (strict) · Tailwind v4 · Zod · OpenAI · Vitest · Playwright + axe-core · Vercel.
+> Next.js 16 (App Router) · React 19 · TypeScript (strict) · Tailwind v4 · Zod · OpenAI · Vitest · Playwright + axe-core · Vercel.
 
-No database, no auth, no state library, no component library. Nothing here needed one.
+No component library and no state library. The one dependency added for
+accounts is none: sessions use `node:crypto`, and passwords use `scrypt` from
+the standard library rather than a native bcrypt build.
+
+```
+Presentation      app/ · components/
+      |
+Application       lib/claims/ · lib/auth/ · lib/api/
+      |
+Domain            lib/rules/ · lib/match/          <- pure, no I/O, no clock
+      |
+Infrastructure    lib/db/ · lib/ai/ · lib/security/
+```
 
 | Directory | Purpose |
 |---|---|
-| `lib/rules/` | types · sources registry · 9 rules · engine · apply |
+| `lib/rules/` | types · source registry · rule registry · 9 rules · engine · apply |
 | `lib/match/` | name & date reconciliation with token-level diff |
-| `lib/ai/` | OpenAI wrapper · pattern-first decoder · extraction schema + scrub · rate limit |
-| `app/api/` | `/preflight` · `/ai/decode` · `/ai/explain` · `/ai/extract` |
+| `lib/claims/` | claim state machine · owner-scoped case repository |
+| `lib/auth/` | scrypt passwords · server sessions · guards · roles · demo seed |
+| `lib/api/` | one error envelope · bounded JSON reader · same-origin check |
+| `lib/security/` | per-bucket rate limiting |
+| `lib/db/` | the persistence layer (see the caveat below) |
+| `lib/ai/` | OpenAI wrapper · pattern-first decoder · extraction schema + scrub |
+| `app/api/` | `/v1/preflight` · `/auth/*` · `/case` · `/ai/*` · `/ifsc` |
 
-📖 *Deep dive into architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).*
+📖 *Deep dive: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).*
+
+---
+
+## Accounts, sessions and access
+
+**Sessions.** The browser holds an opaque 32-byte random token in an
+`HttpOnly`, `SameSite=Lax`, `Secure`-in-production cookie. The server stores
+only its SHA-256. A stolen database therefore yields no usable session, and no
+session state is readable or forgeable by client script. There is no JWT: a
+bearer token that cannot be revoked is the wrong trade for a product whose
+whole claim is trustworthiness. Logging out invalidates the server record
+first, then clears the cookie.
+
+**Passwords.** `scrypt`, salted per account, with the cost parameters stored
+alongside the hash so they can be raised later without invalidating anyone. A
+login against an unknown address still pays for one KDF run, so a miss and a
+wrong password are indistinguishable in the response *and* in the time taken.
+
+**Authorization.** Three roles — `citizen`, `employer`, `admin`. Enforced by
+`requireUser` / `requireRole` on the server, inside the layout of every
+protected route. `src/proxy.ts` also redirects a cookie-less visitor before the
+page renders, but it is a convenience: it cannot tell whether a cookie is
+valid, and if you deleted it nothing would become accessible that is not
+accessible now.
+
+| Route | Access | Enforced in |
+|---|---|---|
+| `/` `/why` `/sources` `/story` `/api` `/login` `/signup` | Public | — |
+| `/check` `/preflight` `/documents` `/claim` `/done` `/status` | Public by design (works signed out; saved when signed in) | — |
+| `/dashboard` `/account` | Any signed-in account | `requireUser` |
+| `/employer` `/employer/*` | `employer`, `admin` | `requireRole` in the layout |
+| `/governance` | `admin` | `requireRole` in the layout |
+| `POST /api/auth/{signup,login}` | Public, rate limited, origin-checked | route handler |
+| `GET|POST /api/case` | Owner only | session → `userId` → repository |
+| `POST /api/ai/*` | Public, rate limited | route handler |
+| `GET|POST /api/preflight`, `/api/v1/preflight` | Public, rate limited, no PII | route handler |
+
+**Ownership.** There is no `getCase(id)` anywhere in this codebase. Every
+repository function takes the authenticated user's id as its first argument, so
+there is no object to reference insecurely and directly — the shape that
+produces an IDOR is one we made unwriteable.
+
+**CSRF.** `SameSite=Lax` blocks the cross-site POST; every state-changing
+handler additionally rejects a foreign `Origin`.
+
+**Headers.** CSP, `X-Content-Type-Options`, `X-Frame-Options: DENY`,
+`Referrer-Policy`, `Permissions-Policy` (camera, mic, geolocation and payment
+all denied) and HSTS, applied to every response in `next.config.ts` and
+verified against a production build.
+
+**Redirects.** `?next=` is attacker-controlled and is filtered by `safeNext`,
+which rejects absolute URLs, protocol-relative `//evil.example`, the backslash
+variant, and embedded control characters. Eight tests, one per technique.
+
+---
+
+## What is real, and what is not
+
+| | |
+|---|---|
+| **Real** | The rule engine and its 9 rules. Name and date reconciliation. IFSC format validation. Accounts, password hashing, sessions, roles, route authorization, ownership scoping, rate limiting, security headers. Document reading and field extraction (with a key). The Preflight API. Every citation. |
+| **Synthetic** | Every member record, UAN, employer roster and name. Nothing here belongs to a real person. |
+| **Simulated** | Claim submission and the status timeline. No government system is contacted at any point, and the product says so on both screens. |
+| **Mocked** | The IFSC directory is a small fixed set of the 2019–20 PSB merger prefixes, not a live RBI feed. |
+| **Future** | Reading a real member record with consent; a live bank directory; password reset (deliberately absent rather than faked — see below). |
+
+**Password reset is not implemented.** No mail is configured in this
+environment, and a flow that says *check your inbox* while sending nothing is
+worse than an honest sentence. The login page carries that sentence.
+
+### Known limitations, stated plainly
+
+- **Persistence is a JSON document** held in memory and flushed to disk
+  (`.data/nivaaran.json`, or `/tmp` on Vercel). Correct for a handful of
+  synthetic accounts on one instance; it does not survive a redeploy and it
+  does not scale past one. The repository interface is the part that matters —
+  swapping in a real database is a change of `src/lib/db/store.ts`.
+- **Rate limiting is in-process**, so it is per-instance. `src/lib/security/ratelimit.ts`
+  is the only file a distributed limiter would replace.
+- **`epfindia.gov.in` did not resolve from our network** during research. Rules
+  resting on that circular are marked `needs_review` in `/governance` and
+  corroborated against a secondary source, rather than presented as verified.
 
 ---
 
 ## Quality & Testing
 
-| Metric | Score / Details |
-|---|---|
-| **Unit tests** | **110** — matching, rules, category routing, bilingual completeness, friction maths |
-| **E2E + a11y** | **76** across mobile and desktop — full journey, back button, document reading, 44px targets |
-| **axe-core** | **Zero** WCAG 2.1 A/AA violations across 12 states |
-| **Lighthouse** | Performance **95** · Accessibility **100** · Best Practices **100** · SEO **100** · CLS **0** |
-
 ```bash
-# How to run the entire suite locally
 pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm e2e
 ```
 
+| Metric | Details |
+|---|---|
+| **Unit & integration** | **198** — rules, matching, claim state machine, case ownership, password policy, open-redirect filter, rate limiting, API error envelope, bilingual completeness, rule-registry drift |
+| **E2E + a11y** | **138** across mobile and desktop projects — full journey, auth, authorization boundaries, employer handoff, AI-unavailable, 44px touch targets, Hindi |
+| **axe-core** | Zero WCAG 2.1 A/AA violations on every public page, every authenticated page signed in as its owner, the 404, the 403, and the sign-in form with an error showing — in both languages |
+
+Security-specific tests cover: an unauthenticated protected route, a citizen
+reaching for an employer route, an employer reaching for governance, a
+cross-origin POST carrying a valid cookie, malformed and oversized bodies,
+open-redirect payloads, and the fact that one account's case is invisible to
+another.
+
 ---
 
-## Honesty & Scope
+## Positioning
 
-A judging criterion, and a page in the product: **[/sources](docs/RESEARCH.md)**.
+Nivaaran is not a better EPFO website. It is a **validation layer that sits in
+front of an existing queue**, and PF is the proof of concept.
 
-- **What actually works:** The rule engine, name/date reconciliation, IFSC format check, document reading, employer lens, Preflight API, and citations.
-- **What is mocked:** The member record, employer roster, claim submission, status progression, and any payment/authentication (none exist in this build).
-- **Privacy First:** We never ask for, extract, or store an Aadhaar, PAN, or account number. Your documents are downscaled, scrubbed of EXIF data, sent to OpenAI for one read, and completely discarded.
+```
+Today                          With a preflight layer
+citizen -> form                citizen -> intent
+        -> submit                      -> preflight
+        -> wait 20 days                -> evidence
+        -> rejected                    -> owner named
+        -> find out why                -> fix
+        -> fix                         -> re-check
+        -> submit again                -> submit once
+```
+
+The architectural insight is one sentence: **move validation upstream.**
+Nothing about it is specific to provident fund. The same shape — a rule
+registry, a deterministic engine, an owner on every finding — sits in front of
+pension applications, scholarships, certificates, welfare claims and licensing.
+That is a direction, not a claim about what is built; none of those
+integrations exist here, and the product says so — on **`/beyond`**, three
+times over.
+
+Crucially, it does not require replacing a government backend. It runs in
+front of one.
 
 ---
 
 ## Roadmap
 
-1. **Authenticated Access:** Read the real member record with consent.
-2. **Live NPCI Directory:** Hook up the real IFSC directory instead of the mock set.
-3. **Rule Governance:** Named domain owners and changelogs per rule.
-4. **More Journeys:** Advances (Form 31), transfers (Form 13), pension (10D).
+1. **Read the real member record** with the citizen's consent, replacing the synthetic file.
+2. **Live bank directory** in place of the fixed merger set.
+3. **A real database and a distributed rate limiter** — both are one-file swaps by design.
+4. **Password reset**, once mail delivery exists to make it honest.
+5. **More journeys:** advances (Form 31), transfers (Form 13), pension (10D).
+6. **Employer preflight at exit**, inside an HRMS, through the documented API — the highest-leverage deployment, because it catches the missing exit date at source.
 
 ---
 

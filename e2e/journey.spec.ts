@@ -298,29 +298,51 @@ test.describe("the document pre-check", () => {
 });
 
 test.describe("the employer lens", () => {
+  /** The employer console holds an employer's data, so it needs their account. */
+  async function signInAsEmployer(page: Page) {
+    await page.goto("/login");
+    await page.getByLabel(/Email address/i).fill("employer@nivaaran.app");
+    await page.getByLabel("Password", { exact: true }).fill("NivaaranDemo2026!");
+    await page.getByRole("button", { name: /^Sign in$/ }).click();
+    await expect(page).toHaveURL(/\/dashboard/);
+  }
+
   test("shows who is blocked, and who is blocked on the employer", async ({ page }) => {
+    await signInAsEmployer(page);
     await page.goto("/employer");
 
+    // Scoped to #main throughout: /employer has a loading.tsx, so React
+    // streams the content in and it also exists, briefly, in the out-of-order
+    // placeholder React later moves into place.
+    const main = page.locator("#main");
+
     // The headline is arithmetic on the engine, not a written-down number.
-    await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    await expect(main.getByRole("heading", { level: 1 })).toContainText(
       /6 of your 9 leavers will have a claim rejected\. 3 of them are waiting on you\./i,
     );
-    await expect(page.getByText(/46 minutes, in total/i)).toBeVisible();
+    await expect(main.getByText(/46 minutes, in total/i)).toBeVisible();
+
+    // The queue at a glance, computed from the same engine. Exact, because the
+    // headline sentence ends with the same three words.
+    await expect(main.getByText("Waiting on you", { exact: true })).toBeVisible();
 
     // Longest wait first: Imran has been waiting 154 days.
-    const yours = page.locator("section", { has: page.getByRole("heading", { name: /Only you can fix these/i }) });
+    const yours = main.locator("section", {
+      has: page.getByRole("heading", { name: /Only you can fix these/i }),
+    });
     await expect(yours.locator("li h3").first()).toHaveText("Imran Qureshi");
 
     // The other group is the one nobody has told.
     await expect(
-      page.getByRole("heading", { name: /They can fix these — nobody has told them/i }),
+      main.getByRole("heading", { name: /They can fix these — nobody has told them/i }),
     ).toBeVisible();
-    await expect(page.getByText(/A synthetic roster/i)).toBeVisible();
+    await expect(main.getByText(/A synthetic roster/i)).toBeVisible();
   });
 
   test("filing an exit date re-runs the check and empties that queue", async ({ page }) => {
+    await signInAsEmployer(page);
     await page.goto("/employer");
-    const heading = page.getByRole("heading", { level: 1 });
+    const heading = page.locator("#main").getByRole("heading", { level: 1 });
     await expect(heading).toContainText("3 of them are waiting on you");
 
     const imran = page.locator("li").filter({ has: page.getByRole("heading", { name: "Imran Qureshi" }) });
@@ -337,7 +359,7 @@ test.describe("the employer lens", () => {
     ).toHaveCount(0);
   });
 
-  test("a citizen blocked on their employer can hand them the page", async ({ page }) => {
+  test("a citizen blocked on their employer gets a message to send them", async ({ page }) => {
     await startAs(page, /rejected/i);
     await answerQuestions(page);
     await page.getByRole("button", { name: /Check my claim/i }).click();
@@ -346,10 +368,21 @@ test.describe("the employer lens", () => {
       .locator("li")
       .filter({ has: page.getByRole("heading", { name: /date of exit has not been recorded/i }) });
     await card.getByRole("button", { name: /How to fix it/i }).click();
-    await card.getByRole("link", { name: /Show your employer what they have to do/i }).click();
 
-    await expect(page).toHaveURL(/\/employer/);
-    await expect(page.getByRole("heading", { name: "Sunita Devi" })).toBeVisible();
+    // The citizen cannot open the employer console — that is the employer's
+    // data. What they get is the artefact that actually moves this.
+    await card.getByRole("button", { name: /Prepare a message for your employer/i }).click();
+
+    const message = card.getByLabel(/Message for your employer/i);
+    await expect(message).toBeVisible();
+
+    const text = await message.inputValue();
+    expect(text).toMatch(/date of exit/i);
+    expect(text).toMatch(/Source:/);
+    // It carries the issue and the source, and no identifiers HR does not need.
+    expect(text).not.toMatch(/\b\d{4}-\d{2}-\d{2}\b/);
+
+    await expect(card.getByRole("button", { name: /Copy message/i })).toBeVisible();
   });
 });
 

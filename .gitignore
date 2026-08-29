@@ -37,3 +37,6 @@ yarn-error.log*
 # editor
 .idea/
 .vscode/
+
+# Local persistence for the prototype (synthetic accounts and cases).
+.data/
