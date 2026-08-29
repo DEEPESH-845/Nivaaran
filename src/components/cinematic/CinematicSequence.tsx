@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 
+import { useLang } from "@/lib/i18n/context";
+
 import { FrameRenderer } from "./FrameRenderer";
 import { BEAT_COPY, OverlayContent } from "./OverlayContent";
 import { BEATS, STILL_QUERY, frameSrc } from "./config";
@@ -14,6 +16,7 @@ import { StoryCTA } from "../story/StoryCTA";
  * and a crawler see.
  */
 function StillSequence() {
+  const { lang, t } = useLang();
   return (
     <div className="mx-auto max-w-2xl px-5 py-16 sm:py-24">
       <ol className="space-y-16">
@@ -21,17 +24,17 @@ function StillSequence() {
           <li key={beat.key}>
             <Image
               src={frameSrc("w768", BEATS[i].frame)}
-              alt={beat.alt}
+              alt={t(beat.alt)}
               width={768}
               height={432}
               className="w-full rounded-card"
               priority={i === 0}
             />
             <h2 className="mt-6 text-balance text-[clamp(1.5rem,5vw,2.25rem)] font-semibold leading-tight tracking-tight text-white">
-              {beat.head.join(" ")}
+              {beat.head[lang].join(" ")}
             </h2>
             <p className="mt-2 text-balance text-md leading-relaxed text-white/70">
-              {beat.sub}
+              {t(beat.sub)}
             </p>
           </li>
         ))}

@@ -72,7 +72,7 @@ const COPY = {
   },
   samples: { en: "Samples", hi: "नमूने" },
   or: { en: "or", hi: "या" },
-  choose: { en: "Choose a file", hi: "फ़ाइल चुनें" },
+  choose: { en: "Use my own photo", hi: "अपनी तस्वीर इस्तेमाल करें" },
   reading: { en: "Reading…", hi: "पढ़ा जा रहा है…" },
   previewAlt: {
     en: "The document being read, downscaled in your browser",
@@ -83,9 +83,9 @@ const COPY = {
     en: "Reading documents isn't available right now. You can still type the values in below.",
     hi: "अभी दस्तावेज़ पढ़ना उपलब्ध नहीं है। आप नीचे मान ख़ुद भी भर सकते हैं।",
   },
-  conf_high: { en: "High confidence", hi: "उच्च विश्वसनीयता" },
-  conf_medium: { en: "Medium confidence", hi: "मध्यम विश्वसनीयता" },
-  conf_low: { en: "Low confidence", hi: "कम विश्वसनीयता" },
+  advice_clear: { en: "Read clearly", hi: "साफ़ पढ़ा गया" },
+  advice_check: { en: "Check these values", hi: "ये मान जाँच लें" },
+  advice_checkAll: { en: "Check every value", hi: "हर मान जाँच लें" },
   q_blurred: {
     en: "This photo is blurred — check the values before using them.",
     hi: "यह तस्वीर धुंधली है — इस्तेमाल से पहले मान जाँच लें।",
@@ -104,11 +104,27 @@ const COPY = {
   },
 } as const satisfies Record<string, Bi>;
 
-const CONFIDENCE_TONE: Record<Confidence, Tone> = {
-  high: "clear",
-  medium: "caution",
-  low: "blocked",
+type Advice = "clear" | "check" | "checkAll";
+
+const ADVICE_TONE: Record<Advice, Tone> = {
+  clear: "clear",
+  check: "caution",
+  checkAll: "blocked",
 };
+
+/**
+ * What to do about a reading, not how sure a model was about it.
+ *
+ * "High confidence" answers a question nobody asked — confident about what,
+ * and what should I do differently if it were medium? This answers the only
+ * question the reader has, and takes the photograph's own faults into account
+ * rather than leaving them to a separate sentence.
+ */
+function adviceFor(confidence: Confidence, quality: Quality): Advice {
+  if (confidence === "low" || quality === "not_a_document") return "checkAll";
+  if (confidence === "high" && quality === "clear") return "clear";
+  return "check";
+}
 
 /**
  * Downscale and re-encode before anything is sent. Cheaper, faster, and the
@@ -213,6 +229,7 @@ export function DocumentSlot({
 
   const quality = state.kind === "read" ? state.quality : null;
   const qualityNote = quality && quality !== "clear" ? COPY[`q_${quality}` as const] : null;
+  const advice = state.kind === "read" ? adviceFor(state.confidence, state.quality) : null;
 
   return (
     <div className="space-y-3">
@@ -242,9 +259,7 @@ export function DocumentSlot({
               <p className="text-sm text-ink-mute">{t(COPY.reading)}</p>
             ) : (
               <>
-                <Badge tone={CONFIDENCE_TONE[state.confidence]}>
-                  {t(COPY[`conf_${state.confidence}` as const])}
-                </Badge>
+                <Badge tone={ADVICE_TONE[advice!]}>{t(COPY[`advice_${advice!}` as const])}</Badge>
                 {qualityNote ? (
                   <p className="text-sm leading-relaxed text-caution-700">{t(qualityNote)}</p>
                 ) : null}
@@ -279,7 +294,7 @@ export function DocumentSlot({
               ref={fileRef}
               id={inputId}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
               onChange={onFile}
               className="peer sr-only"
             />
@@ -289,7 +304,7 @@ export function DocumentSlot({
                 "inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-ctl border " +
                 "border-line-strong bg-paper-raised px-4 text-base font-medium text-ink " +
                 "hover:border-ink-mute hover:bg-paper-sunk " +
-                "peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400 peer-focus-visible:ring-offset-2"
+                "peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-paper"
               }
             >
               <FileUp aria-hidden className="size-4" strokeWidth={1.8} />
@@ -303,7 +318,7 @@ export function DocumentSlot({
         {state.kind === "reading"
           ? t(COPY.reading)
           : state.kind === "read"
-            ? t(COPY[`conf_${state.confidence}` as const])
+            ? t(COPY[`advice_${adviceFor(state.confidence, state.quality)}` as const])
             : state.kind === "unavailable"
               ? t(COPY.unavailable)
               : ""}
