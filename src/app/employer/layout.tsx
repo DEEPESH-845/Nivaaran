@@ -1,11 +1,24 @@
 import type { Metadata } from "next";
+import { requireRole } from "@/lib/auth/guard";
 
 export const metadata: Metadata = {
   title: "For employers — Nivaaran",
   description:
-    "Which of your leavers will have a PF claim rejected, and which of those only you can prevent. The same deterministic check, read from the other side.",
+    "The former employees whose PF claim is blocked on something only their employer can fix, and how long each has been waiting.",
+  robots: { index: false, follow: true },
 };
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+/**
+ * The employer boundary.
+ *
+ * A layout, so it covers this route and everything nested under it — a new
+ * page added below cannot forget to protect itself. A citizen who types
+ * `/employer` is redirected to `/forbidden`, not shown a hidden menu item.
+ *
+ * The demo employer account is published on the sign-in page, so a judge is
+ * one tap from the other side of this door.
+ */
+export default async function Layout({ children }: { children: React.ReactNode }) {
+  await requireRole(["employer", "admin"], "/employer");
   return children;
 }

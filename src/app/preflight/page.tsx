@@ -19,11 +19,18 @@ const TYPICAL_REJECTION_DAYS = 20;
 export default function PreflightPage() {
   const router = useRouter();
   const { lang } = useLang();
-  const { session, ready, markFixed, reset } = useSession();
+  const { session, ready, markFixed, markPreflightRun, reset } = useSession();
 
   useEffect(() => {
     if (ready && !session.facts) router.replace("/");
   }, [ready, session.facts, router]);
+
+  // Reaching this page *is* running the check. Recording it is what lets the
+  // dashboard tell "you have not checked yet" apart from "you checked and
+  // three things are wrong" — two states that need very different sentences.
+  useEffect(() => {
+    if (ready && session.facts) markPreflightRun();
+  }, [ready, session.facts, markPreflightRun]);
 
   const result = useMemo(
     () => (session.facts ? preflight(session.facts) : null),

@@ -50,8 +50,8 @@ const COPY = {
   },
   syntheticTitle: { en: "A synthetic roster", hi: "काल्पनिक सूची" },
   synthetic: {
-    en: "Every person, UAN and record on this page is invented. Nivaaran is an independent prototype with no login and no database — it holds no employer's data and never will in this build. In a real deployment this same check runs inside your HRMS at exit, against records you already hold, through the documented Preflight API.",
-    hi: "इस पृष्ठ का हर व्यक्ति, UAN और रिकॉर्ड काल्पनिक है। निवारण एक स्वतंत्र प्रोटोटाइप है — न लॉगिन, न डेटाबेस; यह किसी नियोक्ता का डेटा न रखता है, न इस बिल्ड में कभी रखेगा। असली तैनाती में यही जाँच आपके HRMS में, नौकरी छोड़ते समय, आपके पास पहले से मौजूद रिकॉर्ड पर चलती है — दस्तावेज़ीकृत प्री-फ़्लाइट API से।",
+    en: "Every person, UAN and record on this page is invented. This roster is fixed demonstration data, not something you uploaded and not something Nivaaran holds on your behalf — the accounts in this build store only a citizen's own check. In a real deployment this same engine runs inside your HRMS at exit, against records you already hold, through the documented Preflight API.",
+    hi: "इस पृष्ठ का हर व्यक्ति, UAN और रिकॉर्ड काल्पनिक है। यह सूची तय प्रदर्शन डेटा है — न आपने अपलोड की है, न निवारण इसे आपकी ओर से रखता है; इस बिल्ड के खाते सिर्फ़ नागरिक की अपनी जाँच सहेजते हैं। असली तैनाती में यही इंजन आपके HRMS में, नौकरी छोड़ते समय, आपके पास पहले से मौजूद रिकॉर्ड पर चलता है — दस्तावेज़ीकृत प्री-फ़्लाइट API से।",
   },
   apiLink: { en: "See the API", hi: "API देखें" },
 } as const satisfies Record<string, Bi>;
@@ -92,6 +92,30 @@ export default function EmployerPage() {
               : `Your share of the work: ${minutes} minutes, in total. Left undone, each of them gets a rejection in about ${TYPICAL_REJECTION_DAYS} days, and then starts again.`}
           </p>
         ) : null}
+        {/* The queue at a glance. Every number is arithmetic on `preflight`,
+            computed at render; none of it is written down anywhere. */}
+        <dl className="grid grid-cols-2 gap-3 pt-1 sm:grid-cols-4">
+          <Stat
+            k={lang === "hi" ? "कुल पूर्व कर्मचारी" : "Leavers"}
+            v={counts.total}
+          />
+          <Stat
+            k={lang === "hi" ? "आप पर अटके" : "Waiting on you"}
+            v={counts.blockedOnYou}
+            tone={counts.blockedOnYou > 0 ? "blocked" : "clear"}
+          />
+          <Stat
+            k={lang === "hi" ? "वे ख़ुद ठीक कर सकते हैं" : "Theirs to fix"}
+            v={counts.blocked - counts.blockedOnYou}
+            tone="caution"
+          />
+          <Stat
+            k={lang === "hi" ? "कोई रुकावट नहीं" : "Nothing blocking"}
+            v={counts.clear}
+            tone="clear"
+          />
+        </dl>
+
         <p className="text-sm text-ink-mute">{t(ESTABLISHMENT)}</p>
       </section>
 
@@ -184,6 +208,35 @@ export default function EmployerPage() {
           </p>
         </Callout>
       </section>
+    </div>
+  );
+}
+
+/**
+ * One number and what it counts. Colour is never the only signal: the label
+ * says what it is, and the number says how many.
+ */
+function Stat({
+  k,
+  v,
+  tone = "neutral",
+}: {
+  k: string;
+  v: number;
+  tone?: "neutral" | "blocked" | "caution" | "clear";
+}) {
+  const colour =
+    tone === "blocked"
+      ? "text-blocked-700"
+      : tone === "caution"
+        ? "text-caution-700"
+        : tone === "clear"
+          ? "text-clear-700"
+          : "text-ink";
+  return (
+    <div className="rounded-card border border-line bg-paper-raised p-3">
+      <dt className="text-2xs font-semibold uppercase tracking-[0.09em] text-ink-mute">{k}</dt>
+      <dd className={`tnum mt-1 font-mono text-2xl leading-none ${colour}`}>{v}</dd>
     </div>
   );
 }
