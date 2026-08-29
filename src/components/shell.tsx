@@ -101,6 +101,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         { href: "/dashboard", label: lang === "hi" ? "डैशबोर्ड" : "Dashboard" },
         { href: "/preflight", label: lang === "hi" ? "मेरी जाँच" : "My check" },
         { href: "/documents", label: lang === "hi" ? "दस्तावेज़" : "Documents" },
+        { href: "/adhaar", label: lang === "hi" ? "आधार कार्ड" : "Aadhaar card" },
         ...(user.role === "employer" || user.role === "admin"
           ? [{ href: "/employer", label: lang === "hi" ? "पूर्व कर्मचारी" : "Leavers" }]
           : []),
@@ -314,6 +315,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </Link>
             <Link href="/documents" className="font-medium text-indigo-600 hover:text-indigo-700">
               {lang === "hi" ? "दस्तावेज़ मिलान" : "Compare documents"}
+            </Link>
+            <Link href="/adhaar" className="font-medium text-indigo-600 hover:text-indigo-700">
+              {lang === "hi" ? "आधार कार्ड" : "Your Aadhaar card"}
             </Link>
             {!user || user.role !== "citizen" ? (
               <Link href="/employer" className="font-medium text-indigo-600 hover:text-indigo-700">

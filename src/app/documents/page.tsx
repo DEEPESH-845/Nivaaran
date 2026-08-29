@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, Info, X } from "lucide-react";
 import { Badge, Button, Callout, Card, Choice, Divider, SectionLabel } from "@/components/ui";
@@ -13,6 +14,7 @@ import {
   type DocumentValues,
   type ReconcileRow,
 } from "@/lib/match/reconcile";
+import { JourneyRail } from "@/components/journey-rail";
 import { useLang } from "@/lib/i18n/context";
 import { useSession } from "@/lib/state/session";
 import { isValidIfscFormat } from "@/lib/rules/rules";
@@ -65,6 +67,7 @@ const COPY = {
     hi: "ऊपर कोई दस्तावेज़ पढ़वाएँ, तुलना यहीं दिखेगी। अगर पढ़ना काम न करे, तो मान ख़ुद भर दें — तुलना दोनों तरह से वही रहती है।",
   },
   typeInstead: { en: "Type the values in instead", hi: "मान ख़ुद भरें" },
+  buildCard: { en: "Or build the Aadhaar side as a card", hi: "या आधार वाला हिस्सा कार्ड की तरह बनाएँ" },
   missingBank: {
     en: "The passbook carries the other two — the IFSC and the last four digits.",
     hi: "बाक़ी दो पासबुक में हैं — IFSC और खाते के आख़िरी चार अंक।",
@@ -260,150 +263,162 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 px-4 py-10 sm:py-14">
-      <section className="space-y-3">
-        <SectionLabel>{t(COPY.eyebrow)}</SectionLabel>
-        <h1 className="display max-w-3xl text-balance">{t(COPY.h1)}</h1>
-        <p className="max-w-2xl text-md leading-relaxed text-ink-soft">{t(COPY.lede)}</p>
-        <p className="max-w-2xl text-sm leading-relaxed text-ink-mute">{t(COPY.notVerify)}</p>
-      </section>
+    <>
+      {/* Both halves of the "Your records" stage — the photograph and the card
+          — used to drop the reader out of the journey they were walking. */}
+      <JourneyRail current="records" />
+      <div className="mx-auto max-w-3xl space-y-8 px-4 py-10 sm:py-14">
+        <section className="space-y-3">
+          <SectionLabel>{t(COPY.eyebrow)}</SectionLabel>
+          <h1 className="display max-w-3xl text-balance">{t(COPY.h1)}</h1>
+          <p className="max-w-2xl text-md leading-relaxed text-ink-soft">{t(COPY.lede)}</p>
+          <p className="max-w-2xl text-sm leading-relaxed text-ink-mute">{t(COPY.notVerify)}</p>
+        </section>
 
-      <Callout tone="caution" title={t(COPY.warningTitle)}>
-        {t(COPY.warning)}
-      </Callout>
+        <Callout tone="caution" title={t(COPY.warningTitle)}>
+          {t(COPY.warning)}
+        </Callout>
 
-      {/* ------------------------------------------------------------ Slots */}
-      <section className="grid gap-6 sm:grid-cols-2">
-        <Card className="p-4 sm:p-5">
-          <DocumentSlot kind="identity" onRead={(r) => onRead("identity", r)} />
-        </Card>
-        <Card className="p-4 sm:p-5">
-          <DocumentSlot kind="bank" onRead={(r) => onRead("bank", r)} />
-        </Card>
-      </section>
+        {/* ------------------------------------------------------------ Slots */}
+        <section className="grid gap-6 sm:grid-cols-2">
+          <Card className="p-4 sm:p-5">
+            <DocumentSlot kind="identity" onRead={(r) => onRead("identity", r)} />
+          </Card>
+          <Card className="p-4 sm:p-5">
+            <DocumentSlot kind="bank" onRead={(r) => onRead("bank", r)} />
+          </Card>
+        </section>
 
-      {missing ? (
-        <p className="-mt-4 text-sm leading-relaxed text-ink-mute">{t(missing)}</p>
-      ) : null}
+        {missing ? (
+          <p className="-mt-4 text-sm leading-relaxed text-ink-mute">{t(missing)}</p>
+        ) : null}
 
-      {/* ------------------------------------------------------------ Table */}
-      <section aria-labelledby="comparison" className="space-y-3">
-        <h2
-          id="comparison"
-          ref={comparisonRef}
-          tabIndex={-1}
-          className="scroll-mt-24 text-lg font-semibold tracking-[-0.01em] text-ink outline-none"
-        >
-          {t(COPY.tableTitle)}
-        </h2>
+        {/* ------------------------------------------------------------ Table */}
+        <section aria-labelledby="comparison" className="space-y-3">
+          <h2
+            id="comparison"
+            ref={comparisonRef}
+            tabIndex={-1}
+            className="scroll-mt-24 text-lg font-semibold tracking-[-0.01em] text-ink outline-none"
+          >
+            {t(COPY.tableTitle)}
+          </h2>
 
-        {read.length === 0 && !typing ? (
-          <div className="space-y-3 rounded-card bg-paper-sunk p-4">
-            <p className="text-sm leading-relaxed text-ink-soft">{t(COPY.nothingRead)}</p>
-            <Button tone="secondary" onClick={() => setTyping(true)}>
-              {t(COPY.typeInstead)}
+          {read.length === 0 && !typing ? (
+            <div className="space-y-3 rounded-card bg-paper-sunk p-4">
+              <p className="text-sm leading-relaxed text-ink-soft">{t(COPY.nothingRead)}</p>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button tone="secondary" onClick={() => setTyping(true)}>
+                  {t(COPY.typeInstead)}
+                </Button>
+                {/* The other manual path. A reader who lands here after a failed
+                    read should see both, not just the one this page owns. */}
+                <Link href="/adhaar" className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
+                  {t(COPY.buildCard)}
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <>
+              {read.length > 0 ? (
+                <p aria-live="polite" className="text-md leading-relaxed text-ink">
+                  {lang === "hi"
+                    ? `चार में से ${read.length} जानकारियाँ मिलाई गईं। `
+                    : `${read.length} of the four fields compared. `}
+                  {blocking.length === 0
+                    ? lang === "hi"
+                      ? "इनमें से कोई भी दावा नहीं रोकेगी।"
+                      : "Nothing here will stop your claim."
+                    : lang === "hi"
+                      ? `${blocking.length} आपका दावा रोक देंगी।`
+                      : `${blocking.length} will stop your claim.`}
+                </p>
+              ) : null}
+
+              <ul className="space-y-3">
+                {rows.map((row) => (
+                  <li key={row.field}>
+                    <Card className="space-y-3 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <SectionLabel>{t(row.label)}</SectionLabel>
+                        <Verdict row={row} />
+                      </div>
+
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                        <span className="shrink-0 text-sm text-ink-mute sm:w-40">
+                          {t(COPY.epfoLabel)}
+                        </span>
+                        <span className="tnum font-mono text-sm text-ink">{row.epfo}</span>
+                      </div>
+
+                      {row.sides.includes("identity") ? (
+                        <ValueInput
+                          label={t(COPY.identityLabel)}
+                          value={values.identity[row.field] ?? ""}
+                          verdict={row.identity.verdict}
+                          type={row.field === "dob" ? "date" : "text"}
+                          onChange={(v) => edit("identity", row.field, v)}
+                        />
+                      ) : null}
+
+                      {row.sides.includes("bank") ? (
+                        <ValueInput
+                          label={t(COPY.bankLabel)}
+                          value={values.bank[row.field] ?? ""}
+                          verdict={row.bank.verdict}
+                          onChange={(v) => edit("bank", row.field, v)}
+                        />
+                      ) : null}
+
+                      {row.documentsDisagree ? (
+                        <p className="flex gap-2 rounded-ctl bg-paper-sunk p-3 text-xs leading-relaxed text-ink-soft">
+                          <Info aria-hidden className="mt-0.5 size-3.5 shrink-0 text-ink-faint" strokeWidth={1.8} />
+                          {t(COPY.disagree)}
+                        </p>
+                      ) : null}
+
+                      {/* A difference with no rule behind it is information, not a
+                          rejection. Saying otherwise would invent a blocker. */}
+                      {row.note &&
+                      !row.ruleId &&
+                      (row.identity.verdict === "differs" || row.bank.verdict === "differs") ? (
+                        <p className="rounded-ctl border border-caution-100 bg-caution-50 p-3 text-xs leading-relaxed text-caution-700">
+                          {t(row.note)}
+                        </p>
+                      ) : null}
+                    </Card>
+                  </li>
+                ))}
+              </ul>
+
+              <p className="text-xs leading-relaxed text-ink-mute">{t(COPY.editHint)}</p>
+              <p className="text-xs leading-relaxed text-ink-mute">{t(COPY.precheck)}</p>
+            </>
+          )}
+        </section>
+
+        {/* Always reachable, including when nothing could be read. A failed
+            reading loses a convenience; it must never strand anyone here. */}
+        <section className="space-y-3">
+          <Divider />
+          <div className="flex flex-wrap items-center gap-3">
+            {read.length > 0 ? (
+              <Button
+                onClick={() => {
+                  setFacts(merge(facts, values.identity, values.bank), "documents");
+                  router.push("/preflight");
+                }}
+              >
+                {t(COPY.use)}
+                <ArrowRight aria-hidden className="size-4" strokeWidth={1.8} />
+              </Button>
+            ) : null}
+            <Button tone="secondary" onClick={() => router.push("/check?q=5")}>
+              {t(COPY.backToCheck)}
             </Button>
           </div>
-        ) : (
-          <>
-            {read.length > 0 ? (
-              <p aria-live="polite" className="text-md leading-relaxed text-ink">
-                {lang === "hi"
-                  ? `चार में से ${read.length} जानकारियाँ मिलाई गईं। `
-                  : `${read.length} of the four fields compared. `}
-                {blocking.length === 0
-                  ? lang === "hi"
-                    ? "इनमें से कोई भी दावा नहीं रोकेगी।"
-                    : "Nothing here will stop your claim."
-                  : lang === "hi"
-                    ? `${blocking.length} आपका दावा रोक देंगी।`
-                    : `${blocking.length} will stop your claim.`}
-              </p>
-            ) : null}
-
-            <ul className="space-y-3">
-              {rows.map((row) => (
-                <li key={row.field}>
-                  <Card className="space-y-3 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <SectionLabel>{t(row.label)}</SectionLabel>
-                      <Verdict row={row} />
-                    </div>
-
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                      <span className="shrink-0 text-sm text-ink-mute sm:w-40">
-                        {t(COPY.epfoLabel)}
-                      </span>
-                      <span className="tnum font-mono text-sm text-ink">{row.epfo}</span>
-                    </div>
-
-                    {row.sides.includes("identity") ? (
-                      <ValueInput
-                        label={t(COPY.identityLabel)}
-                        value={values.identity[row.field] ?? ""}
-                        verdict={row.identity.verdict}
-                        type={row.field === "dob" ? "date" : "text"}
-                        onChange={(v) => edit("identity", row.field, v)}
-                      />
-                    ) : null}
-
-                    {row.sides.includes("bank") ? (
-                      <ValueInput
-                        label={t(COPY.bankLabel)}
-                        value={values.bank[row.field] ?? ""}
-                        verdict={row.bank.verdict}
-                        onChange={(v) => edit("bank", row.field, v)}
-                      />
-                    ) : null}
-
-                    {row.documentsDisagree ? (
-                      <p className="flex gap-2 rounded-ctl bg-paper-sunk p-3 text-xs leading-relaxed text-ink-soft">
-                        <Info aria-hidden className="mt-0.5 size-3.5 shrink-0 text-ink-faint" strokeWidth={1.8} />
-                        {t(COPY.disagree)}
-                      </p>
-                    ) : null}
-
-                    {/* A difference with no rule behind it is information, not a
-                        rejection. Saying otherwise would invent a blocker. */}
-                    {row.note &&
-                    !row.ruleId &&
-                    (row.identity.verdict === "differs" || row.bank.verdict === "differs") ? (
-                      <p className="rounded-ctl border border-caution-100 bg-caution-50 p-3 text-xs leading-relaxed text-caution-700">
-                        {t(row.note)}
-                      </p>
-                    ) : null}
-                  </Card>
-                </li>
-              ))}
-            </ul>
-
-            <p className="text-xs leading-relaxed text-ink-mute">{t(COPY.editHint)}</p>
-            <p className="text-xs leading-relaxed text-ink-mute">{t(COPY.precheck)}</p>
-          </>
-        )}
-      </section>
-
-      {/* Always reachable, including when nothing could be read. A failed
-          reading loses a convenience; it must never strand anyone here. */}
-      <section className="space-y-3">
-        <Divider />
-        <div className="flex flex-wrap items-center gap-3">
-          {read.length > 0 ? (
-            <Button
-              onClick={() => {
-                setFacts(merge(facts, values.identity, values.bank), "documents");
-                router.push("/preflight");
-              }}
-            >
-              {t(COPY.use)}
-              <ArrowRight aria-hidden className="size-4" strokeWidth={1.8} />
-            </Button>
-          ) : null}
-          <Button tone="secondary" onClick={() => router.push("/check?q=5")}>
-            {t(COPY.backToCheck)}
-          </Button>
-        </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </>
   );
 }

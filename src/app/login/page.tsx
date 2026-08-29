@@ -29,6 +29,13 @@ function LoginForm() {
   const emailError = fieldMessage(failure, "email");
   const passwordError = fieldMessage(failure, "password");
 
+  // Carry the destination across. Without this, a reader the guard sent to
+  // one of these two pages loses where they were going the moment they switch
+  // to the other, and lands on the dashboard instead.
+  const next = params.get("next");
+  const crossLink = (path: string) =>
+    next ? `${path}?next=${encodeURIComponent(safeNext(next))}` : path;
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (busy) return;
@@ -111,7 +118,7 @@ function LoginForm() {
 
           <p className="text-sm text-ink-soft">
             {lang === "hi" ? "खाता नहीं है? " : "No account yet? "}
-            <Link href="/signup" className="font-medium text-indigo-600 hover:text-indigo-700">
+            <Link href={crossLink("/signup")} className="font-medium text-indigo-600 hover:text-indigo-700">
               {ui("signUp")}
             </Link>
           </p>
