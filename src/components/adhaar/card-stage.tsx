@@ -18,13 +18,16 @@ import type { Bi } from "@/lib/rules/types";
  * `rotationY`; sharing one element means the flip fights the pointer and the
  * card jitters at 180°.
  *
- * `tiltRef` is the single source of truth for where the card is pointing. The
- * WebGL studio reads the same ref, so the room and the card agree about where
- * the light is instead of drifting apart. See AGENTS.md rule 14 for why the
- * studio is loaded the way it is.
+ * There is nothing behind the card. There used to be: a WebGL studio painting
+ * a pool of light, a contact shadow and drifting motes, on a ticker that ran
+ * for as long as the stage was on screen. It was beautiful and it was in the
+ * way — the card is the subject of this page, and a lit room around it made
+ * the page heavier than the one object it exists to show. What replaced it is
+ * the card's own shadow, one static declaration, and everything that moves now
+ * moves because a finger or a key moved it.
  */
 
-export interface Tilt {
+interface Tilt {
   x: number;
   y: number;
 }
@@ -57,24 +60,13 @@ const stillNow = () => window.matchMedia(REDUCED).matches;
 /** The server cannot know, and must not guess in the markup. */
 const stillOnServer = () => false;
 
-type StudioComponent = React.ComponentType<{ tiltRef: React.RefObject<Tilt>; active: boolean }>;
-
-export function CardStage({
-  details,
-  revealed,
-  enhanced,
-}: {
-  details: CardDetails;
-  revealed: boolean;
-  enhanced: boolean;
-}) {
+export function CardStage({ details, revealed }: { details: CardDetails; revealed: boolean }) {
   const { t } = useLang();
   const stageRef = useRef<HTMLDivElement>(null);
   const tiltEl = useRef<HTMLDivElement>(null);
   const flipEl = useRef<HTMLDivElement>(null);
   const tiltRef = useRef<Tilt>({ x: 0, y: 0 });
   const setters = useRef<{ x: (v: number) => void; y: (v: number) => void } | null>(null);
-  const idle = useRef<gsap.core.Tween | null>(null);
 
   // Turns, not a boolean: the card always continues the way it was already
   // going, so a second press carries on clockwise instead of unwinding the
@@ -82,8 +74,6 @@ export function CardStage({
   // object being turned over in the hand.
   const [turns, setTurns] = useState(0);
   const [touched, setTouched] = useState(false);
-  const [onScreen, setOnScreen] = useState(false);
-  const [Studio, setStudio] = useState<StudioComponent | null>(null);
   const flipped = turns % 2 === 1;
 
   const still = useSyncExternalStore(subscribeStill, stillNow, stillOnServer);
@@ -97,11 +87,10 @@ export function CardStage({
 
     const card = tiltEl.current;
     if (card) {
-      // The specular highlight and the foil hue both read these, so one
-      // pointer position drives every lighting cue on the card.
+      // The specular highlight reads these, so the pointer position drives
+      // the one lighting cue the card has.
       card.style.setProperty("--spec-x", `${50 + (y / MAX_Y) * 38}%`);
       card.style.setProperty("--spec-y", `${50 - (x / MAX_X) * 38}%`);
-      card.style.setProperty("--tilt-y", String(y));
     }
 
     if (setters.current) {
@@ -133,28 +122,17 @@ export function CardStage({
     };
   }, [still]);
 
+  // Back to rest, and then nothing. There was an endless four-second breath
+  // here to keep an untouched card "alive"; a loop that never stops is a frame
+  // budget spent on a page where nobody is doing anything.
   const rest = useCallback(() => {
     if (still) return;
     apply(0, 0);
-    idle.current?.kill();
-    const card = tiltEl.current;
-    if (!card) return;
-    // A slow breath so a card nobody is touching still looks alive.
-    idle.current = gsap.to(card, {
-      rotationY: 4,
-      rotationX: -2,
-      duration: 4,
-      yoyo: true,
-      repeat: -1,
-      ease: "sine.inOut",
-      delay: 0.6,
-    });
   }, [apply, still]);
 
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (still) return;
     const box = e.currentTarget.getBoundingClientRect();
-    idle.current?.kill();
     // Guarded: this fires on every pointer move, and an unguarded setState
     // here re-renders the whole card sixty times a second.
     if (!touched) setTouched(true);
@@ -182,7 +160,6 @@ export function CardStage({
     if (!move) return;
     e.preventDefault();
     setTouched(true);
-    idle.current?.kill();
     apply(y + move[0], x + move[1]);
   }
 
@@ -215,53 +192,6 @@ export function CardStage({
     };
   }, [turns, still]);
 
-  /* --------------------------------------------- only while on screen */
-
-  useEffect(() => {
-    const el = stageRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(([entry]) => setOnScreen(entry.isIntersecting), {
-      threshold: 0.1,
-    });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!onScreen) idle.current?.kill();
-    return () => {
-      idle.current?.kill();
-    };
-  }, [onScreen]);
-
-  /* ------------------------------------------------------- the studio */
-
-  // Loaded after the page is interactive, never during first paint, and never
-  // at all when `enhanced` is false. A static import here would put three.js
-  // in the main bundle and break the whole promise.
-  useEffect(() => {
-    if (!enhanced) return;
-    let cancelled = false;
-    const load = () => {
-      void import("./studio")
-        .then((m) => {
-          if (!cancelled) setStudio(() => m.default);
-        })
-        .catch(() => {
-          // Blocked, offline, or refused. The card is already complete.
-        });
-    };
-    const idleId =
-      typeof window.requestIdleCallback === "function"
-        ? window.requestIdleCallback(load, { timeout: 2500 })
-        : window.setTimeout(load, 1200);
-    return () => {
-      cancelled = true;
-      if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idleId);
-      else window.clearTimeout(idleId);
-    };
-  }, [enhanced]);
-
   return (
     <div
       ref={stageRef}
@@ -278,11 +208,17 @@ export function CardStage({
         setTouched(true);
         setTurns((n) => n + 1);
       }}
-      className="relative isolate mx-auto w-full max-w-lg cursor-pointer rounded-card px-4 py-14 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-600 sm:py-16"
+      // The one entrance on this page: eight pixels and an opacity, once, on
+      // arrival. It runs on the stage rather than on anything inside it — a
+      // CSS animation outranks an inline transform, so on the tilt element its
+      // final `transform: none` would win against every pointer move for good,
+      // and on a wrapper in between it would flatten the 3D context the card
+      // is built out of.
+      className="card-enter relative isolate mx-auto w-full max-w-lg cursor-pointer rounded-card px-4 py-14 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-600 sm:py-16"
       style={{ perspective: "1200px" }}
     >
-      {enhanced && Studio ? <Studio tiltRef={tiltRef} active={onScreen} /> : null}
-
+      {/* No wrapper between the perspective and the tilt: an element without
+          `preserve-3d` in the middle flattens the whole card onto one plane. */}
       <div ref={tiltEl} className="relative z-10" style={{ transformStyle: "preserve-3d" }}>
         <div ref={flipEl} data-testid="card-flip" style={{ transformStyle: "preserve-3d" }}>
           <SpecimenCard details={details} revealed={revealed} face={flipped ? "back" : "front"} />

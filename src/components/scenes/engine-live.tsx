@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { useMemo, useState } from "react";
 import { Check, RotateCcw } from "lucide-react";
 
-import { Button } from "@/components/ui";
+import { ActionFooter, Button } from "@/components/ui";
 import { PERSONAS } from "@/content/personas";
 import { useLang } from "@/lib/i18n/context";
 import { applyFix } from "@/lib/rules/apply";
@@ -141,22 +141,26 @@ export function EngineLive() {
           })}
         </ul>
 
-        <div className="flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6">
-          {applied ? (
-            <Button tone="secondary" onClick={() => setApplied(false)}>
-              <RotateCcw aria-hidden className="size-4" strokeWidth={1.8} />
-              {t(COPY.reset)}
-            </Button>
-          ) : (
-            <Button onClick={() => setApplied(true)}>
-              <Check aria-hidden className="size-4" strokeWidth={2} />
-              {t(COPY.apply)}
-            </Button>
-          )}
+        <ActionFooter
+          className="px-5 py-4 sm:px-6"
+          action={
+            applied ? (
+              <Button tone="secondary" onClick={() => setApplied(false)}>
+                <RotateCcw aria-hidden className="size-4" strokeWidth={1.8} />
+                {t(COPY.reset)}
+              </Button>
+            ) : (
+              <Button onClick={() => setApplied(true)}>
+                <Check aria-hidden className="size-4" strokeWidth={2} />
+                {t(COPY.apply)}
+              </Button>
+            )
+          }
+        >
           <p
             aria-live="polite"
             className={clsx(
-              "min-w-0 flex-1 text-sm leading-relaxed",
+              "text-sm leading-relaxed",
               applied ? "text-clear-700" : "text-ink-faint",
             )}
           >
@@ -166,7 +170,7 @@ export function EngineLive() {
                 ? "इसे दबाकर इंजन को दोबारा चलते देखें।"
                 : "Press it to watch the engine re-run."}
           </p>
-        </div>
+        </ActionFooter>
       </div>
 
       <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-mute">
