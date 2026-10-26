@@ -40,3 +40,7 @@ yarn-error.log*
 
 # Local persistence for the prototype (synthetic accounts and cases).
 .data/
+
+# local scratch
+repomix-output.xml
+/_*.mjs
